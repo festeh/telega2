@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <title>Telegram Client Icon - Top View</title>
+  <defs>
+    <!-- Enhanced Blue Background Gradient -->
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bbf7"/>
+      <stop offset="100%" stop-color="#148ac4"/>
+    </linearGradient>
+
+    <!-- Left Wing Gradient (Lighter) -->
+    <linearGradient id="wingLeftGrad" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E0E6EB"/>
+    </linearGradient>
+
+    <!-- Right Wing Gradient (Darker to simulate fold shadow) -->
+    <linearGradient id="wingRightGrad" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#D4DDE4"/>
+      <stop offset="100%" stop-color="#BCC9D4"/>
+    </linearGradient>
+
+    <!-- Soft Drop Shadow for the plane -->
+    <filter id="planeShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#1c6b91" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- Main Circle Background -->
+  <circle cx="120" cy="120" r="120" fill="url(#bgGradient)"/>
+
+  <!-- Paper Plane Group -->
+  <g filter="url(#planeShadow)">
+    <!-- Left Wing -->
+    <path d="M120,45 L120,155 L60,195 Z" fill="url(#wingLeftGrad)"/>
+
+    <!-- Right Wing -->
+    <path d="M120,45 L180,195 L120,155 Z" fill="url(#wingRightGrad)"/>
+
+    <!-- Center Crease Highlight (Optional thin line for sharpness) -->
+    <path d="M120,45 L120,155" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+  </g>
+</svg>
