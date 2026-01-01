@@ -1,5 +1,13 @@
 enum ChatType { private, basicGroup, supergroup, secret, channel }
 
+/// Helper to safely parse int64 values from TDLib JSON (they come as strings)
+int? parseJsonInt64(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is String) return int.tryParse(value);
+  return null;
+}
+
 /// Media file info for photos
 class PhotoInfo {
   final String? path;
@@ -719,7 +727,7 @@ class MessageReaction {
     if (typeString == 'reactionTypeCustomEmoji') {
       return MessageReaction(
         type: ReactionType.customEmoji,
-        customEmojiId: reactionType['custom_emoji_id'] as int?,
+        customEmojiId: parseJsonInt64(reactionType['custom_emoji_id']),
         count: json['total_count'] as int? ?? 0,
         isChosen: json['is_chosen'] as bool? ?? false,
       );

@@ -1993,9 +1993,11 @@ class TdlibTelegramClient implements TelegramClientRepository {
     });
 
     try {
-      final response = await _sendRequest({
+      // TDLib expects int64 as strings in JSON
+      final stringIds = customEmojiIds.map((id) => id.toString()).toList();
+      final response = await _sendRequestAsync({
         '@type': 'getCustomEmojiStickers',
-        'custom_emoji_ids': customEmojiIds,
+        'custom_emoji_ids': stringIds,
       });
 
       _logger.logResponse({
@@ -2023,10 +2025,10 @@ class TdlibTelegramClient implements TelegramClientRepository {
           'sticker_keys': sticker.keys.toList(),
         });
 
-        // The custom_emoji_id is at the top level of the sticker object
-        final customEmojiId = sticker['custom_emoji_id'] as int?;
+        // Sticker id is the custom_emoji_id for custom emoji stickers
+        final customEmojiId = parseJsonInt64(sticker['id']);
         if (customEmojiId == null) {
-          _logger.logError('No custom_emoji_id in sticker', error: sticker);
+          _logger.logError('No id in sticker', error: sticker);
           continue;
         }
 
