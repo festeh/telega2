@@ -9,6 +9,7 @@ import '../../presentation/providers/telegram_client_provider.dart';
 import 'photo_message.dart';
 import 'sticker_message.dart';
 import 'video_message.dart';
+import 'link_preview_card.dart';
 
 class MessageBubble extends ConsumerWidget {
   final Message message;
@@ -217,7 +218,7 @@ class MessageBubble extends ConsumerWidget {
 
     // Check if replied message has a photo (regular or link preview)
     final photoPath = repliedMessage?.photo?.path;
-    final linkPreviewPhotoPath = repliedMessage?.linkPreviewPhoto?.path;
+    final linkPreviewPhotoPath = repliedMessage?.linkPreview?.photo?.path;
     final displayPhotoPath = photoPath ?? linkPreviewPhotoPath;
     final hasPhoto = displayPhotoPath != null && displayPhotoPath.isNotEmpty;
 
@@ -226,7 +227,7 @@ class MessageBubble extends ConsumerWidget {
         repliedMessage != null &&
         !hasPhoto &&
         ((repliedMessage.photo?.fileId != null) ||
-            (repliedMessage.linkPreviewPhoto?.fileId != null));
+            (repliedMessage.linkPreview?.photo?.fileId != null));
 
     // Capture for closure
     final replyMsg = repliedMessage;
@@ -421,15 +422,39 @@ class MessageBubble extends ConsumerWidget {
 
   Widget _buildTextMessage(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Text(
-      message.content,
-      style: TextStyle(
-        fontSize: 16,
-        height: 1.3,
-        color: message.isOutgoing
-            ? colorScheme.onPrimary
-            : colorScheme.onSurface,
-      ),
+    final hasLinkPreview = message.linkPreview != null;
+
+    if (!hasLinkPreview) {
+      return Text(
+        message.content,
+        style: TextStyle(
+          fontSize: 16,
+          height: 1.3,
+          color: message.isOutgoing
+              ? colorScheme.onPrimary
+              : colorScheme.onSurface,
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          message.content,
+          style: TextStyle(
+            fontSize: 16,
+            height: 1.3,
+            color: message.isOutgoing
+                ? colorScheme.onPrimary
+                : colorScheme.onSurface,
+          ),
+        ),
+        LinkPreviewCard(
+          preview: message.linkPreview!,
+          isOutgoing: message.isOutgoing,
+        ),
+      ],
     );
   }
 
@@ -628,7 +653,7 @@ class _ReplyPostViewer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final photoPath = message.photo?.path ?? message.linkPreviewPhoto?.path;
+    final photoPath = message.photo?.path ?? message.linkPreview?.photo?.path;
     final hasPhoto = photoPath != null && photoPath.isNotEmpty;
 
     return Scaffold(

@@ -64,6 +64,39 @@ class StickerInfo {
   }
 }
 
+/// Link preview info for messages with URLs
+class LinkPreviewInfo {
+  final String url;
+  final String? title;
+  final String? description;
+  final String? siteName;
+  final PhotoInfo? photo;
+
+  const LinkPreviewInfo({
+    required this.url,
+    this.title,
+    this.description,
+    this.siteName,
+    this.photo,
+  });
+
+  LinkPreviewInfo copyWith({
+    String? url,
+    String? title,
+    String? description,
+    String? siteName,
+    PhotoInfo? photo,
+  }) {
+    return LinkPreviewInfo(
+      url: url ?? this.url,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      siteName: siteName ?? this.siteName,
+      photo: photo ?? this.photo,
+    );
+  }
+}
+
 /// Media file info for videos
 class VideoInfo {
   final String? path;
@@ -300,8 +333,8 @@ class Message {
   final PhotoInfo? photo;
   final StickerInfo? sticker;
   final VideoInfo? video;
-  // Link preview photo (for messages with t.me links)
-  final PhotoInfo? linkPreviewPhoto;
+  // Link preview (for messages with URLs)
+  final LinkPreviewInfo? linkPreview;
   // Reactions
   final List<MessageReaction>? reactions;
   // Reply
@@ -320,7 +353,7 @@ class Message {
     this.photo,
     this.sticker,
     this.video,
-    this.linkPreviewPhoto,
+    this.linkPreview,
     this.reactions,
     this.replyToMessageId,
   });
@@ -328,7 +361,7 @@ class Message {
   factory Message.fromJson(
     Map<String, dynamic> json, {
     String? senderName,
-    PhotoInfo? linkPreviewPhoto,
+    LinkPreviewInfo? linkPreview,
   }) {
     // Parse message content from TDLib format
     String parseContent(Map<String, dynamic>? contentMap) {
@@ -581,7 +614,7 @@ class Message {
       photo: photo,
       sticker: sticker,
       video: video,
-      linkPreviewPhoto: linkPreviewPhoto,
+      linkPreview: linkPreview,
       reactions: reactions,
       replyToMessageId: replyToMessageId,
     );
@@ -652,7 +685,7 @@ class Message {
     PhotoInfo? photo,
     StickerInfo? sticker,
     VideoInfo? video,
-    PhotoInfo? linkPreviewPhoto,
+    LinkPreviewInfo? linkPreview,
     List<MessageReaction>? reactions,
     int? replyToMessageId,
   }) {
@@ -669,7 +702,7 @@ class Message {
       photo: photo ?? this.photo,
       sticker: sticker ?? this.sticker,
       video: video ?? this.video,
-      linkPreviewPhoto: linkPreviewPhoto ?? this.linkPreviewPhoto,
+      linkPreview: linkPreview ?? this.linkPreview,
       reactions: reactions ?? this.reactions,
       replyToMessageId: replyToMessageId ?? this.replyToMessageId,
     );

@@ -285,7 +285,10 @@ class _MessageInputAreaState extends ConsumerState<MessageInputArea>
               onTap: _onTextFieldTapped,
               behavior: HitTestBehavior.translucent,
               child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 40, maxHeight: 120),
+                constraints: const BoxConstraints(
+                  minHeight: 40,
+                  maxHeight: 120,
+                ),
                 child: TextField(
                   controller: _textController,
                   focusNode: _focusNode,
@@ -333,18 +336,28 @@ class _MessageInputAreaState extends ConsumerState<MessageInputArea>
                     suffixIcon: IconButton(
                       onPressed: isSending ? null : _showEmojiPicker,
                       padding: const EdgeInsets.all(8),
-                      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                      constraints: const BoxConstraints(
+                        minWidth: 36,
+                        minHeight: 36,
+                      ),
                       iconSize: 22,
                       icon: Icon(
-                        ref.watch(emojiStickerProvider.select((s) => s.isPickerVisible))
+                        ref.watch(
+                              emojiStickerProvider.select(
+                                (s) => s.isPickerVisible,
+                              ),
+                            )
                             ? Icons.keyboard_outlined
                             : Icons.emoji_emotions_outlined,
                         color: colorScheme.onSurface.withValues(
                           alpha: isSending ? 0.3 : 0.6,
                         ),
                       ),
-                      tooltip: ref.watch(
-                            emojiStickerProvider.select((s) => s.isPickerVisible),
+                      tooltip:
+                          ref.watch(
+                            emojiStickerProvider.select(
+                              (s) => s.isPickerVisible,
+                            ),
                           )
                           ? 'Show keyboard'
                           : 'Add emoji',

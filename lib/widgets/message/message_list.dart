@@ -115,13 +115,13 @@ class _MessageListState extends ConsumerState<MessageList> {
               curve: Curves.easeOut,
             )
             .then((_) {
-          _isAutoScrolling = false;
-          if (!_shouldAutoScroll) {
-            setState(() {
-              _shouldAutoScroll = true;
+              _isAutoScrolling = false;
+              if (!_shouldAutoScroll) {
+                setState(() {
+                  _shouldAutoScroll = true;
+                });
+              }
             });
-          }
-        });
       } else {
         _scrollController.jumpTo(0.0);
         _isAutoScrolling = false;

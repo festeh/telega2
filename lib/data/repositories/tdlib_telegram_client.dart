@@ -344,14 +344,15 @@ class TdlibTelegramClient implements TelegramClientRepository {
       }
     }
 
-    // For messages with Telegram link previews (e.g., replies to channel posts in discussions),
-    // use the link preview title as sender name if it's a t.me link
+    // Parse link preview for messages with URLs
     final content = json['content'] as Map<String, dynamic>?;
-    PhotoInfo? linkPreviewPhoto;
+    LinkPreviewInfo? linkPreviewInfo;
     if (content != null && content['@type'] == 'messageText') {
       final linkPreview = content['link_preview'] as Map<String, dynamic>?;
       if (linkPreview != null) {
         final url = linkPreview['url'] as String? ?? '';
+
+        // For Telegram link previews, use title as sender name
         if (url.contains('t.me/') || url.contains('telegram.me/')) {
           final previewTitle = linkPreview['title'] as String?;
           if (previewTitle != null && previewTitle.isNotEmpty) {
@@ -360,13 +361,27 @@ class TdlibTelegramClient implements TelegramClientRepository {
         }
 
         // Parse link preview photo if available
+        PhotoInfo? previewPhoto;
         final previewType = linkPreview['type'] as Map<String, dynamic>?;
         if (previewType != null &&
             previewType['@type'] == 'linkPreviewTypePhoto') {
           final photoData = previewType['photo'] as Map<String, dynamic>?;
           if (photoData != null) {
-            linkPreviewPhoto = _parsePhotoFromSizes(photoData);
+            previewPhoto = _parsePhotoFromSizes(photoData);
           }
+        }
+
+        // Create LinkPreviewInfo if we have a valid URL
+        if (url.isNotEmpty) {
+          linkPreviewInfo = LinkPreviewInfo(
+            url: url,
+            title: linkPreview['title'] as String?,
+            description:
+                (linkPreview['description'] as Map<String, dynamic>?)?['text']
+                    as String?,
+            siteName: linkPreview['site_name'] as String?,
+            photo: previewPhoto,
+          );
         }
       }
     }
@@ -374,7 +389,7 @@ class TdlibTelegramClient implements TelegramClientRepository {
     final message = Message.fromJson(
       json,
       senderName: senderName,
-      linkPreviewPhoto: linkPreviewPhoto,
+      linkPreview: linkPreviewInfo,
     );
 
     // For cross-chat replies, extract and cache the reply preview from reply_to
@@ -425,7 +440,7 @@ class TdlibTelegramClient implements TelegramClientRepository {
     String replyContent = '';
     MessageType replyType = MessageType.text;
     PhotoInfo? replyPhoto;
-    PhotoInfo? replyLinkPreviewPhoto;
+    LinkPreviewInfo? replyLinkPreview;
 
     // Try to get quote text first
     final quote = replyTo['quote'] as Map<String, dynamic>?;
@@ -459,21 +474,34 @@ class TdlibTelegramClient implements TelegramClientRepository {
           final text = replyToContent['text'] as Map<String, dynamic>?;
           replyContent = text?['text'] as String? ?? '';
         }
-        // Parse link preview photo
+        // Parse link preview
         final linkPreview =
             replyToContent['link_preview'] as Map<String, dynamic>?;
         if (linkPreview != null) {
+          final previewUrl = linkPreview['url'] as String? ?? '';
           // Use link preview title as sender name if not set
           if (replySenderName == null || replySenderName.isEmpty) {
             replySenderName = linkPreview['title'] as String?;
           }
+          PhotoInfo? previewPhoto;
           final previewType = linkPreview['type'] as Map<String, dynamic>?;
           if (previewType != null &&
               previewType['@type'] == 'linkPreviewTypePhoto') {
             final photoData = previewType['photo'] as Map<String, dynamic>?;
             if (photoData != null) {
-              replyLinkPreviewPhoto = _parsePhotoFromSizes(photoData);
+              previewPhoto = _parsePhotoFromSizes(photoData);
             }
+          }
+          if (previewUrl.isNotEmpty) {
+            replyLinkPreview = LinkPreviewInfo(
+              url: previewUrl,
+              title: linkPreview['title'] as String?,
+              description:
+                  (linkPreview['description'] as Map<String, dynamic>?)?['text']
+                      as String?,
+              siteName: linkPreview['site_name'] as String?,
+              photo: previewPhoto,
+            );
           }
         }
       } else if (contentType == 'messageVideo') {
@@ -500,7 +528,7 @@ class TdlibTelegramClient implements TelegramClientRepository {
       isOutgoing: false,
       type: replyType,
       photo: replyPhoto,
-      linkPreviewPhoto: replyLinkPreviewPhoto,
+      linkPreview: replyLinkPreview,
     );
 
     _replyMessageCache[cacheKey] = syntheticReply;
@@ -513,7 +541,7 @@ class TdlibTelegramClient implements TelegramClientRepository {
         replyContent.length.clamp(0, 50),
       ),
       'has_photo': replyPhoto != null,
-      'has_link_preview_photo': replyLinkPreviewPhoto != null,
+      'has_link_preview': replyLinkPreview != null,
     });
 
     // Trigger photo downloads if needed
@@ -526,14 +554,14 @@ class TdlibTelegramClient implements TelegramClientRepository {
       );
       downloadFile(replyPhoto.fileId!);
     }
-    if (replyLinkPreviewPhoto != null &&
-        replyLinkPreviewPhoto.path == null &&
-        replyLinkPreviewPhoto.fileId != null) {
-      _photoFileToMessage[replyLinkPreviewPhoto.fileId!] = (
+    if (replyLinkPreview?.photo != null &&
+        replyLinkPreview!.photo!.path == null &&
+        replyLinkPreview.photo!.fileId != null) {
+      _photoFileToMessage[replyLinkPreview.photo!.fileId!] = (
         chatId: messageChatId,
         messageId: replyMessageId,
       );
-      downloadFile(replyLinkPreviewPhoto.fileId!);
+      downloadFile(replyLinkPreview.photo!.fileId!);
     }
   }
 
@@ -1056,21 +1084,17 @@ class TdlibTelegramClient implements TelegramClientRepository {
       });
 
       // Request messages from TDLib and wait for actual response
-      final response = await _sendRequestAsync(
-        {
-          '@type': 'getChatHistory',
-          'chat_id': chatId,
-          'limit': AppConfig.messagePageSize,
-          'from_message_id': currentFromMessageId,
-          'offset': 0,
-          'only_local': false,
-        },
-        timeout: const Duration(seconds: 10),
-      );
+      final response = await _sendRequestAsync({
+        '@type': 'getChatHistory',
+        'chat_id': chatId,
+        'limit': AppConfig.messagePageSize,
+        'from_message_id': currentFromMessageId,
+        'offset': 0,
+        'only_local': false,
+      }, timeout: const Duration(seconds: 10));
 
       // Process response - extract messages count
-      final messagesInResponse =
-          (response?['messages'] as List?)?.length ?? 0;
+      final messagesInResponse = (response?['messages'] as List?)?.length ?? 0;
 
       // If response had no messages, we've reached the end
       if (messagesInResponse == 0) {
@@ -1233,7 +1257,7 @@ class TdlibTelegramClient implements TelegramClientRepository {
             message.content.length.clamp(0, 50),
           ),
           'has_photo': message.photo != null,
-          'has_link_preview_photo': message.linkPreviewPhoto != null,
+          'has_link_preview': message.linkPreview != null,
         });
         _replyMessageCache[key] = message;
 
@@ -1248,14 +1272,14 @@ class TdlibTelegramClient implements TelegramClientRepository {
           downloadFile(message.photo!.fileId!);
         }
         // Trigger download for link preview photos
-        if (message.linkPreviewPhoto != null &&
-            message.linkPreviewPhoto!.path == null &&
-            message.linkPreviewPhoto!.fileId != null) {
-          _photoFileToMessage[message.linkPreviewPhoto!.fileId!] = (
+        if (message.linkPreview?.photo != null &&
+            message.linkPreview!.photo!.path == null &&
+            message.linkPreview!.photo!.fileId != null) {
+          _photoFileToMessage[message.linkPreview!.photo!.fileId!] = (
             chatId: chatId,
             messageId: replyToMessageId,
           );
-          downloadFile(message.linkPreviewPhoto!.fileId!);
+          downloadFile(message.linkPreview!.photo!.fileId!);
         }
 
         return message;
@@ -2276,7 +2300,7 @@ class TdlibTelegramClient implements TelegramClientRepository {
       }
     }
 
-    // Also update reply message cache (for both photo and linkPreviewPhoto)
+    // Also update reply message cache (for both photo and linkPreview.photo)
     final replyKey = (chatId, messageId);
     final cachedReply = _replyMessageCache[replyKey];
     if (cachedReply != null) {
@@ -2288,9 +2312,11 @@ class TdlibTelegramClient implements TelegramClientRepository {
         );
       }
       // Update link preview photo if it matches
-      if (cachedReply.linkPreviewPhoto?.fileId == fileId) {
+      if (cachedReply.linkPreview?.photo?.fileId == fileId) {
         updatedReply = (updatedReply ?? cachedReply).copyWith(
-          linkPreviewPhoto: cachedReply.linkPreviewPhoto!.copyWith(path: path),
+          linkPreview: cachedReply.linkPreview!.copyWith(
+            photo: cachedReply.linkPreview!.photo!.copyWith(path: path),
+          ),
         );
       }
       if (updatedReply != null) {
