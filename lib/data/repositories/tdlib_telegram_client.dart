@@ -1350,7 +1350,18 @@ class TdlibTelegramClient implements TelegramClientRepository {
         },
       };
 
-      await _sendRequest(request);
+      // Use async request to get the pending message immediately
+      final response = await _sendRequestAsync(
+        request,
+        timeout: const Duration(seconds: 10),
+      );
+      if (response != null && response['@type'] == 'message') {
+        // TDLib returns the message with a temp ID and sending_state = pending
+        // We need to add it to cache and notify UI immediately
+        final pendingMessage = _createMessageFromJson(response);
+        _addMessageToCache(chatId, pendingMessage, insertAtStart: true);
+        _messageEventController.add(MessageAddedEvent(chatId, pendingMessage));
+      }
     } catch (e) {
       _logger.logError('Failed to send photo to chat $chatId', error: e);
       rethrow;
@@ -1381,7 +1392,18 @@ class TdlibTelegramClient implements TelegramClientRepository {
         },
       };
 
-      await _sendRequest(request);
+      // Use async request to get the pending message immediately
+      final response = await _sendRequestAsync(
+        request,
+        timeout: const Duration(seconds: 10),
+      );
+      if (response != null && response['@type'] == 'message') {
+        // TDLib returns the message with a temp ID and sending_state = pending
+        // We need to add it to cache and notify UI immediately
+        final pendingMessage = _createMessageFromJson(response);
+        _addMessageToCache(chatId, pendingMessage, insertAtStart: true);
+        _messageEventController.add(MessageAddedEvent(chatId, pendingMessage));
+      }
     } catch (e) {
       _logger.logError('Failed to send video to chat $chatId', error: e);
       rethrow;
@@ -1412,7 +1434,16 @@ class TdlibTelegramClient implements TelegramClientRepository {
         },
       };
 
-      await _sendRequest(request);
+      // Use async request to get the pending message immediately
+      final response = await _sendRequestAsync(
+        request,
+        timeout: const Duration(seconds: 10),
+      );
+      if (response != null && response['@type'] == 'message') {
+        final pendingMessage = _createMessageFromJson(response);
+        _addMessageToCache(chatId, pendingMessage, insertAtStart: true);
+        _messageEventController.add(MessageAddedEvent(chatId, pendingMessage));
+      }
     } catch (e) {
       _logger.logError('Failed to send document to chat $chatId', error: e);
       rethrow;
@@ -2465,7 +2496,7 @@ class TdlibTelegramClient implements TelegramClientRepository {
   final Map<int, StickerSet> _stickerSetsCache = {};
   final List<StickerSet> _installedStickerSets = [];
   Completer<List<StickerSet>>? _stickerSetsCompleter;
-  Completer<StickerSet>? _stickerSetCompleter;
+  // Removed _stickerSetCompleter - using _pendingStickerSetRequests map instead
   Completer<List<Sticker>>? _recentStickersCompleter;
 
   @override
@@ -2533,7 +2564,6 @@ class TdlibTelegramClient implements TelegramClientRepository {
 
     final completer = Completer<StickerSet>();
     _pendingStickerSetRequests[setId] = completer;
-    _stickerSetCompleter = completer;
 
     await _sendRequest({'@type': 'getStickerSet', 'set_id': setId});
 
@@ -2651,14 +2681,15 @@ class TdlibTelegramClient implements TelegramClientRepository {
         'sticker_count': stickerSet.stickers.length,
       });
 
-      if (_stickerSetCompleter != null && !_stickerSetCompleter!.isCompleted) {
-        _stickerSetCompleter!.complete(stickerSet);
+      // Look up the correct completer using the set ID from response
+      final completer = _pendingStickerSetRequests[stickerSet.id];
+      if (completer != null && !completer.isCompleted) {
+        completer.complete(stickerSet);
       }
     } catch (e) {
       _logger.logError('Error handling sticker set response', error: e);
-      if (_stickerSetCompleter != null && !_stickerSetCompleter!.isCompleted) {
-        _stickerSetCompleter!.completeError(e);
-      }
+      // On parse error, we can't determine which request failed
+      // The timeout in getStickerSet() will handle cleanup
     }
   }
 
