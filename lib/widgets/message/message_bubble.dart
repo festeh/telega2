@@ -10,6 +10,8 @@ import 'photo_message.dart';
 import 'sticker_message.dart';
 import 'video_message.dart';
 import 'link_preview_card.dart';
+import 'emoji_text.dart';
+import '../emoji_sticker/telegram_emoji_widget.dart';
 
 class MessageBubble extends ConsumerWidget {
   final Message message;
@@ -363,8 +365,8 @@ class MessageBubble extends ConsumerWidget {
         ),
         if (hasCaption) ...[
           const SizedBox(height: 8),
-          Text(
-            message.content,
+          EmojiText(
+            text: message.content,
             style: TextStyle(
               fontSize: 16,
               height: 1.3,
@@ -395,8 +397,8 @@ class MessageBubble extends ConsumerWidget {
         ),
         if (hasCaption) ...[
           const SizedBox(height: 8),
-          Text(
-            message.content,
+          EmojiText(
+            text: message.content,
             style: TextStyle(
               fontSize: 16,
               height: 1.3,
@@ -425,8 +427,8 @@ class MessageBubble extends ConsumerWidget {
     final hasLinkPreview = message.linkPreview != null;
 
     if (!hasLinkPreview) {
-      return Text(
-        message.content,
+      return EmojiText(
+        text: message.content,
         style: TextStyle(
           fontSize: 16,
           height: 1.3,
@@ -440,8 +442,8 @@ class MessageBubble extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          message.content,
+        EmojiText(
+          text: message.content,
           style: TextStyle(
             fontSize: 16,
             height: 1.3,
@@ -579,7 +581,11 @@ class MessageBubble extends ConsumerWidget {
                   if ((reaction.type == ReactionType.emoji ||
                           reaction.type == ReactionType.paid) &&
                       reaction.emoji != null)
-                    Text(reaction.emoji!, style: const TextStyle(fontSize: 14))
+                    TelegramEmojiWidget(
+                      emoji: reaction.emoji!,
+                      size: 16,
+                      animated: false,
+                    )
                   else if (reaction.type == ReactionType.customEmoji &&
                       reaction.customEmojiPath != null)
                     // Custom emoji with downloaded image

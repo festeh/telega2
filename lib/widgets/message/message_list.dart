@@ -9,6 +9,7 @@ import '../chat/chat_picker_sheet.dart';
 import 'message_bubble.dart';
 import 'date_separator.dart';
 import 'reaction_bar.dart';
+import 'reaction_picker.dart';
 
 class MessageList extends ConsumerStatefulWidget {
   final Chat chat;
@@ -366,12 +367,36 @@ class _MessageListState extends ConsumerState<MessageList> {
                   if (snapshot.hasData && snapshot.data!.isNotEmpty) {
                     return Column(
                       children: [
-                        ReactionBar(
-                          reactions: snapshot.data!,
-                          onReactionSelected: (emoji) {
-                            Navigator.pop(context);
-                            _addReaction(message, emoji);
-                          },
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ReactionBar(
+                                reactions: snapshot.data!,
+                                onReactionSelected: (emoji) {
+                                  Navigator.pop(context);
+                                  _addReaction(message, emoji);
+                                },
+                              ),
+                            ),
+                            // Expand button to show full emoji picker
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: IconButton(
+                                icon: Icon(
+                                  Icons.add_circle_outline,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
+                                onPressed: () async {
+                                  Navigator.pop(context);
+                                  final emoji = await ExpandedReactionPicker.show(context);
+                                  if (emoji != null) {
+                                    _addReaction(message, emoji);
+                                  }
+                                },
+                                tooltip: 'More reactions',
+                              ),
+                            ),
+                          ],
                         ),
                         const Divider(height: 1),
                       ],

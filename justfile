@@ -204,6 +204,23 @@ run:
     @echo "🚀 Running Telegram Flutter Client..."
     {{flutter_bin}} run -d linux
 
+# Run app with pm2 (logs in /tmp, no auto-restart)
+run-pm2:
+    @echo "🚀 Starting with pm2..."
+    -pm2 delete telega2 2>/dev/null
+    : > /tmp/telega2-out.log
+    : > /tmp/telega2-err.log
+    pm2 start ecosystem.config.js
+    @echo "📋 Logs: tail -f /tmp/telega2-out.log"
+
+# Stop pm2 app
+stop-pm2:
+    pm2 stop telega2
+
+# Show pm2 logs
+logs-pm2:
+    tail -f /tmp/telega2-out.log
+
 # Run app in release mode
 run-release:
     @echo "🚀 Running in release mode..."

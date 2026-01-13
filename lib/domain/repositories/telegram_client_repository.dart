@@ -104,5 +104,10 @@ abstract class TelegramClientRepository {
   Future<List<Sticker>> getRecentStickers();
   Future<void> sendSticker(int chatId, Sticker sticker);
 
+  // Emoji methods
+  /// Get animated emoji sticker for a standard emoji character
+  /// Returns the local file path of the animated sticker, or null if not available
+  Future<String?> getAnimatedEmoji(String emoji);
+
   void dispose();
 }

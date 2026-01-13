@@ -2170,6 +2170,50 @@ class TdlibTelegramClient implements TelegramClientRepository {
     }
   }
 
+  /// Get animated emoji sticker for a standard emoji
+  /// Returns the sticker file path if available, null otherwise
+  /// TDLib provides animated versions of standard emojis (like 👍, ❤️, etc.)
+  @override
+  Future<String?> getAnimatedEmoji(String emoji) async {
+    try {
+      final response = await _sendRequestAsync({
+        '@type': 'getAnimatedEmoji',
+        'emoji': emoji,
+      });
+
+      if (response == null) return null;
+
+      // Response is animatedEmoji with a sticker and fitzpatrick_type
+      final sticker = response['sticker'] as Map<String, dynamic>?;
+      if (sticker == null) return null;
+
+      // Get the sticker file
+      final stickerFile = sticker['sticker'] as Map<String, dynamic>?;
+      if (stickerFile == null) return null;
+
+      final local = stickerFile['local'] as Map<String, dynamic>?;
+      if (local == null) return null;
+
+      final isDownloaded = local['is_downloading_completed'] as bool? ?? false;
+      final path = local['path'] as String?;
+
+      if (isDownloaded && path != null && path.isNotEmpty) {
+        return path;
+      }
+
+      // Need to download the file
+      final fileId = stickerFile['id'] as int?;
+      if (fileId == null) return null;
+
+      // Download synchronously and return path
+      final downloadedPath = await _downloadFileSync(fileId);
+      return downloadedPath;
+    } catch (e) {
+      _logger.logError('Error getting animated emoji for $emoji', error: e);
+      return null;
+    }
+  }
+
   void _handleMessagesResponse(Map<String, dynamic> update) {
     try {
       final messages = update['messages'] as List?;
@@ -2486,6 +2530,44 @@ class TdlibTelegramClient implements TelegramClientRepository {
       'priority': 1,
       'synchronous': false,
     });
+  }
+
+  /// Download a file synchronously and return the local path
+  Future<String?> _downloadFileSync(int fileId) async {
+    // Check cache first
+    final cachedPath = _stickerFileCache[fileId];
+    if (cachedPath != null) {
+      return cachedPath;
+    }
+
+    try {
+      // Use synchronous download
+      final response = await _sendRequestAsync({
+        '@type': 'downloadFile',
+        'file_id': fileId,
+        'priority': 32,
+        'synchronous': true,
+      });
+
+      if (response == null) return null;
+
+      final local = response['local'] as Map<String, dynamic>?;
+      if (local == null) return null;
+
+      final isDownloaded = local['is_downloading_completed'] as bool? ?? false;
+      final path = local['path'] as String?;
+
+      if (isDownloaded && path != null && path.isNotEmpty) {
+        // Cache the path
+        _stickerFileCache[fileId] = path;
+        return path;
+      }
+
+      return null;
+    } catch (e) {
+      _logger.logError('Error downloading file $fileId', error: e);
+      return null;
+    }
   }
 
   // Available reactions completer

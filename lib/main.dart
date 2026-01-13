@@ -9,6 +9,7 @@ import 'screens/home_screen.dart';
 import 'core/logging/logging_config.dart';
 import 'core/logging/tdlib_log_level.dart';
 import 'core/theme/app_theme.dart';
+import 'core/emoji/emoji_data.dart';
 
 const _loadingPhrases = [
   'Warming up the hamster wheel...',
@@ -68,6 +69,8 @@ class _AppWrapperState extends ConsumerState<AppWrapper>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Initialize emoji data for custom rendering
+    EmojiData().initialize();
   }
 
   @override
