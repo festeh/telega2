@@ -2272,7 +2272,23 @@ class TdlibTelegramClient implements TelegramClientRepository {
       final fileId = file['id'] as int?;
       final local = file['local'] as Map<String, dynamic>?;
       final isComplete = local?['is_downloading_completed'] as bool? ?? false;
+      final isDownloading = local?['is_downloading_active'] as bool? ?? false;
+      final downloadedSize = local?['downloaded_size'] as int? ?? 0;
+      final expectedSize = file['expected_size'] as int? ?? file['size'] as int? ?? 0;
       final filePath = local?['path'] as String?;
+
+      // Emit progress for active downloads
+      if (isDownloading && !isComplete && expectedSize > 0 && fileId != null) {
+        _messageEventController.add(
+          FileDownloadProgressEvent(fileId, downloadedSize, expectedSize),
+        );
+      }
+
+      // Detect download failure: was pending but stopped without completing
+      if (!isDownloading && !isComplete && fileId != null && _pendingDownloads.contains(fileId)) {
+        _pendingDownloads.remove(fileId);
+        _messageEventController.add(FileDownloadFailedEvent(fileId));
+      }
 
       if (isComplete &&
           fileId != null &&

@@ -98,6 +98,12 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
         _handleMessageReactionsUpdated(chatId, messageId, reactions);
       case ChatReadOutboxEvent(:final chatId, :final lastReadOutboxMessageId):
         _handleChatReadOutbox(chatId, lastReadOutboxMessageId);
+      case FileDownloadProgressEvent():
+        // Handled by DownloadProgressProvider
+        break;
+      case FileDownloadFailedEvent():
+        // Handled by DownloadProgressProvider
+        break;
     }
   }
 

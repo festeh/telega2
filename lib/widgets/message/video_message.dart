@@ -1,17 +1,21 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
 import '../../core/constants/ui_constants.dart';
+import '../../presentation/providers/download_progress_provider.dart';
+import '../common/circular_download_progress.dart';
 import 'media_placeholder.dart';
 import 'media_utils.dart';
 
-class VideoMessageWidget extends StatelessWidget {
+class VideoMessageWidget extends ConsumerWidget {
   final String? videoPath;
   final int? videoWidth;
   final int? videoHeight;
   final int? duration; // in seconds
   final String? thumbnailPath;
+  final int? videoFileId;
   final bool isOutgoing;
 
   const VideoMessageWidget({
@@ -21,6 +25,7 @@ class VideoMessageWidget extends StatelessWidget {
     this.videoHeight,
     this.duration,
     this.thumbnailPath,
+    this.videoFileId,
     required this.isOutgoing,
   });
 
@@ -50,7 +55,7 @@ class VideoMessageWidget extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
 
     final (displayWidth, displayHeight) = calculateMediaDimensions(
@@ -61,6 +66,13 @@ class VideoMessageWidget extends StatelessWidget {
     final hasVideo = path != null && path.isNotEmpty;
     final thumbPath = thumbnailPath;
     final hasThumbnail = thumbPath != null && thumbPath.isNotEmpty;
+
+    // Watch download progress for this file
+    final downloadState = ref.watchFileDownloadState(videoFileId);
+    final isDownloading = downloadState != null &&
+        downloadState.status == DownloadStatus.downloading;
+    final hasFailed = downloadState != null &&
+        downloadState.status == DownloadStatus.failed;
 
     return GestureDetector(
       onTap: hasVideo ? () => _openVideoPlayer(context) : null,
@@ -84,21 +96,29 @@ class VideoMessageWidget extends StatelessWidget {
                 )
               else
                 const MediaPlaceholder.video(),
-              // Play button overlay
+              // Play button or progress overlay
               Center(
-                child: Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    hasVideo ? Icons.play_arrow : Icons.downloading,
-                    color: Colors.white,
-                    size: 36,
-                  ),
-                ),
+                child: hasVideo
+                    ? Container(
+                        width: 56,
+                        height: 56,
+                        decoration: const BoxDecoration(
+                          color: Colors.black54,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.play_arrow,
+                          color: Colors.white,
+                          size: 36,
+                        ),
+                      )
+                    : CircularDownloadProgress(
+                        progress: downloadState?.progress ?? 0.0,
+                        hasError: hasFailed,
+                        onRetry: hasFailed && videoFileId != null
+                            ? () => ref.retryDownload(videoFileId!)
+                            : null,
+                      ),
               ),
               // Duration badge
               if (duration != null && duration! > 0)

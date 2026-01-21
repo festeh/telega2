@@ -1,14 +1,18 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/ui_constants.dart';
+import '../../presentation/providers/download_progress_provider.dart';
+import '../common/circular_download_progress.dart';
 import 'media_placeholder.dart';
 import 'media_utils.dart';
 
-class PhotoMessageWidget extends StatelessWidget {
+class PhotoMessageWidget extends ConsumerWidget {
   final String? photoPath;
   final int? photoWidth;
   final int? photoHeight;
+  final int? photoFileId;
   final bool isOutgoing;
 
   const PhotoMessageWidget({
@@ -16,6 +20,7 @@ class PhotoMessageWidget extends StatelessWidget {
     this.photoPath,
     this.photoWidth,
     this.photoHeight,
+    this.photoFileId,
     required this.isOutgoing,
   });
 
@@ -38,7 +43,7 @@ class PhotoMessageWidget extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
 
     final (displayWidth, displayHeight) = calculateMediaDimensions(
@@ -48,6 +53,13 @@ class PhotoMessageWidget extends StatelessWidget {
     final path = photoPath;
     final hasPhoto = path != null && path.isNotEmpty;
 
+    // Watch download progress for this file
+    final downloadState = ref.watchFileDownloadState(photoFileId);
+    final isDownloading = downloadState != null &&
+        downloadState.status == DownloadStatus.downloading;
+    final hasFailed = downloadState != null &&
+        downloadState.status == DownloadStatus.failed;
+
     return GestureDetector(
       onTap: hasPhoto ? () => _openFullScreen(context) : null,
       child: ClipRRect(
@@ -56,7 +68,23 @@ class PhotoMessageWidget extends StatelessWidget {
           width: displayWidth,
           height: displayHeight,
           decoration: BoxDecoration(color: colorScheme.surfaceContainerHigh),
-          child: hasPhoto ? _buildImage() : const MediaPlaceholder.photo(),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              hasPhoto ? _buildImage() : const MediaPlaceholder.photo(),
+              // Show progress overlay when downloading or failed
+              if (!hasPhoto && (isDownloading || hasFailed))
+                Center(
+                  child: CircularDownloadProgress(
+                    progress: downloadState?.progress ?? 0.0,
+                    hasError: hasFailed,
+                    onRetry: hasFailed && photoFileId != null
+                        ? () => ref.retryDownload(photoFileId!)
+                        : null,
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

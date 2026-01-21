@@ -361,6 +361,7 @@ class MessageBubble extends ConsumerWidget {
           photoPath: message.photo?.path,
           photoWidth: message.photo?.width,
           photoHeight: message.photo?.height,
+          photoFileId: message.photo?.fileId,
           isOutgoing: message.isOutgoing,
         ),
         if (hasCaption) ...[
@@ -393,6 +394,7 @@ class MessageBubble extends ConsumerWidget {
           videoHeight: message.video?.height,
           duration: message.video?.duration,
           thumbnailPath: message.video?.thumbnailPath,
+          videoFileId: message.video?.fileId,
           isOutgoing: message.isOutgoing,
         ),
         if (hasCaption) ...[
