@@ -154,7 +154,13 @@ class _MessageListState extends ConsumerState<MessageList> {
       },
     );
 
-    final messageState = ref.watch(messageProvider).value;
+    // Watch messages for this specific chat to ensure rebuilds on new messages/reactions
+    final messages = ref.watch(
+      messageProvider.select((state) => state.value?.messagesByChat[widget.chat.id]),
+    );
+    final isChatInitialized = ref.watch(
+      messageProvider.select((state) => state.value?.isChatInitialized(widget.chat.id) ?? false),
+    );
     final isLoadingMore = ref.watch(
       messageProvider.select((state) => state.value?.isLoadingMore ?? false),
     );
@@ -168,10 +174,6 @@ class _MessageListState extends ConsumerState<MessageList> {
     if (hasError && error != null) {
       return _buildErrorState(error);
     }
-
-    final messages = messageState?.messagesByChat[widget.chat.id];
-    final isChatInitialized =
-        messageState?.isChatInitialized(widget.chat.id) ?? false;
 
     // Show loading if messages not loaded yet OR chat hasn't completed initialization
     if (messages == null || !isChatInitialized) {
