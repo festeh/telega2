@@ -17,28 +17,23 @@ class EmojiAssetManager {
   final EmojiCache _cache;
   final EmojiData _emojiData;
 
-  // Optional TDLib client for downloading animated emojis
-  GetAnimatedEmojiFunc? _getAnimatedEmoji;
-
   // Track pending loads to avoid duplicates
   final Map<String, Completer<String?>> _pendingLoads = {};
 
   bool _initialized = false;
 
-  EmojiAssetManager({
-    EmojiCache? cache,
-    EmojiData? emojiData,
-  })  : _cache = cache ?? EmojiCache(),
-        _emojiData = emojiData ?? EmojiData();
+  EmojiAssetManager({EmojiCache? cache, EmojiData? emojiData})
+    : _cache = cache ?? EmojiCache(),
+      _emojiData = emojiData ?? EmojiData();
 
   /// Set the TDLib client for downloading animated emojis
   void setTelegramClient(TelegramClientRepository client) {
-    _getAnimatedEmoji = client.getAnimatedEmoji;
+    // TODO: Use client.getAnimatedEmoji for downloading animated emojis
   }
 
   /// Set a custom function for getting animated emojis (for testing)
   void setAnimatedEmojiLoader(GetAnimatedEmojiFunc loader) {
-    _getAnimatedEmoji = loader;
+    // TODO: Store loader for animated emoji support
   }
 
   /// Initialize the asset manager
@@ -62,7 +57,10 @@ class EmojiAssetManager {
     await _ensureInitialized();
 
     // Check cache first
-    final cachedPath = await _cache.getCachedPath(codepoint, animated: animated);
+    final cachedPath = await _cache.getCachedPath(
+      codepoint,
+      animated: animated,
+    );
     if (cachedPath != null && await File(cachedPath).exists()) {
       return cachedPath;
     }
@@ -94,17 +92,6 @@ class EmojiAssetManager {
       return null;
     } finally {
       _pendingLoads.remove(pendingKey);
-    }
-  }
-
-  /// Convert codepoint string to emoji character
-  String _codepointToEmoji(String codepoint) {
-    try {
-      return String.fromCharCodes(
-        codepoint.split('-').map((c) => int.parse(c, radix: 16)),
-      );
-    } catch (e) {
-      return codepoint;
     }
   }
 

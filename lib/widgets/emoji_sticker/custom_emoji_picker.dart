@@ -83,10 +83,7 @@ class _CustomEmojiPickerState extends ConsumerState<CustomEmojiPicker>
     if (oldWidget.showRecents != widget.showRecents) {
       _tabController.dispose();
       _initCategories();
-      _tabController = TabController(
-        length: _categories.length,
-        vsync: this,
-      );
+      _tabController = TabController(length: _categories.length, vsync: this);
     }
   }
 
@@ -147,7 +144,11 @@ class _CustomEmojiPickerState extends ConsumerState<CustomEmojiPicker>
     if (text.isEmpty) return;
 
     if (selection.isValid && selection.start > 0) {
-      final newText = text.replaceRange(selection.start - 1, selection.start, '');
+      final newText = text.replaceRange(
+        selection.start - 1,
+        selection.start,
+        '',
+      );
       controller.value = TextEditingValue(
         text: newText,
         selection: TextSelection.collapsed(offset: selection.start - 1),
@@ -181,9 +182,7 @@ class _CustomEmojiPickerState extends ConsumerState<CustomEmojiPicker>
       children: [
         // Search bar (tappable)
         if (widget.showSearch)
-          EmojiSearchBar(
-            onTap: () => setState(() => _isSearching = true),
-          ),
+          EmojiSearchBar(onTap: () => setState(() => _isSearching = true)),
 
         // Category tabs
         Container(
@@ -198,9 +197,7 @@ class _CustomEmojiPickerState extends ConsumerState<CustomEmojiPicker>
             dividerColor: Colors.transparent,
             tabAlignment: TabAlignment.start,
             tabs: _categories.map((category) {
-              return Tab(
-                icon: Icon(_getCategoryIcon(category), size: 20),
-              );
+              return Tab(icon: Icon(_getCategoryIcon(category), size: 20));
             }).toList(),
           ),
         ),
@@ -296,7 +293,7 @@ class _CustomEmojiPickerState extends ConsumerState<CustomEmojiPicker>
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, __) => Center(
+      error: (_, _) => Center(
         child: Text(
           'Error loading recent emojis',
           style: TextStyle(color: colorScheme.error),

@@ -1,4 +1,4 @@
-/// Utilities for emoji detection and manipulation
+// Utilities for emoji detection and manipulation
 
 /// Regex pattern to match emoji characters including:
 /// - Basic emoji (Emoji_Presentation)
@@ -89,28 +89,29 @@ List<EmojiSegment> splitTextWithEmojis(String text) {
   for (final match in emojiRegex.allMatches(text)) {
     // Add text before emoji
     if (match.start > lastEnd) {
-      segments.add(EmojiSegment(
-        text: text.substring(lastEnd, match.start),
-        isEmoji: false,
-      ));
+      segments.add(
+        EmojiSegment(
+          text: text.substring(lastEnd, match.start),
+          isEmoji: false,
+        ),
+      );
     }
 
     // Add emoji
-    segments.add(EmojiSegment(
-      text: match.group(0)!,
-      isEmoji: true,
-      codepoint: emojiToCodepoint(match.group(0)!),
-    ));
+    segments.add(
+      EmojiSegment(
+        text: match.group(0)!,
+        isEmoji: true,
+        codepoint: emojiToCodepoint(match.group(0)!),
+      ),
+    );
 
     lastEnd = match.end;
   }
 
   // Add remaining text
   if (lastEnd < text.length) {
-    segments.add(EmojiSegment(
-      text: text.substring(lastEnd),
-      isEmoji: false,
-    ));
+    segments.add(EmojiSegment(text: text.substring(lastEnd), isEmoji: false));
   }
 
   return segments;
@@ -143,7 +144,9 @@ bool isOnlyEmojis(String text) {
   if (trimmed.isEmpty) return false;
 
   // Remove all emojis and whitespace, check if anything remains
-  final withoutEmojis = trimmed.replaceAll(emojiRegex, '').replaceAll(RegExp(r'\s'), '');
+  final withoutEmojis = trimmed
+      .replaceAll(emojiRegex, '')
+      .replaceAll(RegExp(r'\s'), '');
   return withoutEmojis.isEmpty;
 }
 

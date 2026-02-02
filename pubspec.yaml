@@ -40,10 +40,12 @@ dependencies:
   intl: ^0.20.2
   flutter_dotenv: ^6.0.0
   lottie: ^3.3.2
-  file_picker: ^8.0.3
+  file_picker: ^10.3.10
   image_picker: ^1.1.2
   video_player: ^2.9.3
   url_launcher: ^6.2.5
+  photo_manager: ^3.5.0
+  photo_manager_image_provider: ^2.2.0
 
 dev_dependencies:
   flutter_test:

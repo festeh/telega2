@@ -1451,6 +1451,72 @@ class TdlibTelegramClient implements TelegramClientRepository {
   }
 
   @override
+  Future<void> sendMessageAlbum(
+    int chatId,
+    List<(String path, bool isVideo)> items, {
+    String? caption,
+    int? replyToMessageId,
+  }) async {
+    try {
+      final inputContents = <Map<String, dynamic>>[];
+      for (var i = 0; i < items.length; i++) {
+        final (path, isVideo) = items[i];
+        final isFirst = i == 0;
+        if (isVideo) {
+          inputContents.add({
+            '@type': 'inputMessageVideo',
+            'video': {'@type': 'inputFileLocal', 'path': path},
+            if (isFirst && caption != null && caption.isNotEmpty)
+              'caption': {'@type': 'formattedText', 'text': caption},
+          });
+        } else {
+          inputContents.add({
+            '@type': 'inputMessagePhoto',
+            'photo': {'@type': 'inputFileLocal', 'path': path},
+            if (isFirst && caption != null && caption.isNotEmpty)
+              'caption': {'@type': 'formattedText', 'text': caption},
+          });
+        }
+      }
+
+      final request = {
+        '@type': 'sendMessageAlbum',
+        'chat_id': chatId,
+        if (replyToMessageId != null)
+          'reply_to': {
+            '@type': 'inputMessageReplyToMessage',
+            'message_id': replyToMessageId,
+          },
+        'input_message_contents': inputContents,
+      };
+
+      final response = await _sendRequestAsync(
+        request,
+        timeout: const Duration(seconds: 15),
+      );
+      if (response != null && response['@type'] == 'messages') {
+        final messagesList = response['messages'] as List<dynamic>? ?? [];
+        for (final msgJson in messagesList) {
+          if (msgJson is Map<String, dynamic> &&
+              msgJson['@type'] == 'message') {
+            final pendingMessage = _createMessageFromJson(msgJson);
+            _addMessageToCache(chatId, pendingMessage, insertAtStart: true);
+            _messageEventController.add(
+              MessageAddedEvent(chatId, pendingMessage),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      _logger.logError(
+        'Failed to send message album to chat $chatId',
+        error: e,
+      );
+      rethrow;
+    }
+  }
+
+  @override
   Future<void> markAsRead(int chatId, int messageId) async {
     try {
       await _sendRequest({
@@ -2274,7 +2340,8 @@ class TdlibTelegramClient implements TelegramClientRepository {
       final isComplete = local?['is_downloading_completed'] as bool? ?? false;
       final isDownloading = local?['is_downloading_active'] as bool? ?? false;
       final downloadedSize = local?['downloaded_size'] as int? ?? 0;
-      final expectedSize = file['expected_size'] as int? ?? file['size'] as int? ?? 0;
+      final expectedSize =
+          file['expected_size'] as int? ?? file['size'] as int? ?? 0;
       final filePath = local?['path'] as String?;
 
       // Emit progress for active downloads
@@ -2285,7 +2352,10 @@ class TdlibTelegramClient implements TelegramClientRepository {
       }
 
       // Detect download failure: was pending but stopped without completing
-      if (!isDownloading && !isComplete && fileId != null && _pendingDownloads.contains(fileId)) {
+      if (!isDownloading &&
+          !isComplete &&
+          fileId != null &&
+          _pendingDownloads.contains(fileId)) {
         _pendingDownloads.remove(fileId);
         _messageEventController.add(FileDownloadFailedEvent(fileId));
       }

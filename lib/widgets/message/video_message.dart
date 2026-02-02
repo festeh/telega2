@@ -69,10 +69,8 @@ class VideoMessageWidget extends ConsumerWidget {
 
     // Watch download progress for this file
     final downloadState = ref.watchFileDownloadState(videoFileId);
-    final isDownloading = downloadState != null &&
-        downloadState.status == DownloadStatus.downloading;
-    final hasFailed = downloadState != null &&
-        downloadState.status == DownloadStatus.failed;
+    final hasFailed =
+        downloadState != null && downloadState.status == DownloadStatus.failed;
 
     return GestureDetector(
       onTap: hasVideo ? () => _openVideoPlayer(context) : null,

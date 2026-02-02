@@ -508,6 +508,32 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
     }
   }
 
+  Future<void> sendAlbum(
+    int chatId,
+    List<(String path, bool isVideo)> items, {
+    String? caption,
+  }) async {
+    try {
+      final currentState = state.value ?? MessageState.initial();
+      final replyToMessageId = currentState.replyingToMessage?.id;
+      state = AsyncData(currentState.setSending(true));
+
+      await _client.sendMessageAlbum(
+        chatId,
+        items,
+        caption: caption,
+        replyToMessageId: replyToMessageId,
+      );
+      _logger.debug('Album of ${items.length} items sent to chat $chatId');
+
+      final latestState = state.value ?? MessageState.initial();
+      state = AsyncData(latestState.setSending(false).clearReplyingTo());
+    } catch (e) {
+      _logger.error('Failed to send album to chat $chatId', error: e);
+      _setError('Failed to send album: $e');
+    }
+  }
+
   Future<void> deleteMessage(int chatId, int messageId) async {
     try {
       final success = await _client.deleteMessage(chatId, messageId);

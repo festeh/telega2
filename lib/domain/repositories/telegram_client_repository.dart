@@ -80,6 +80,12 @@ abstract class TelegramClientRepository {
     String? caption,
     int? replyToMessageId,
   });
+  Future<void> sendMessageAlbum(
+    int chatId,
+    List<(String path, bool isVideo)> items, {
+    String? caption,
+    int? replyToMessageId,
+  });
   Future<void> markAsRead(int chatId, int messageId);
   Future<bool> deleteMessage(int chatId, int messageId);
   Future<Message?> editMessage(int chatId, int messageId, String newText);

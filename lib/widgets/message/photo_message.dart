@@ -55,10 +55,11 @@ class PhotoMessageWidget extends ConsumerWidget {
 
     // Watch download progress for this file
     final downloadState = ref.watchFileDownloadState(photoFileId);
-    final isDownloading = downloadState != null &&
+    final isDownloading =
+        downloadState != null &&
         downloadState.status == DownloadStatus.downloading;
-    final hasFailed = downloadState != null &&
-        downloadState.status == DownloadStatus.failed;
+    final hasFailed =
+        downloadState != null && downloadState.status == DownloadStatus.failed;
 
     return GestureDetector(
       onTap: hasPhoto ? () => _openFullScreen(context) : null,
@@ -76,7 +77,7 @@ class PhotoMessageWidget extends ConsumerWidget {
               if (!hasPhoto && (isDownloading || hasFailed))
                 Center(
                   child: CircularDownloadProgress(
-                    progress: downloadState?.progress ?? 0.0,
+                    progress: downloadState.progress,
                     hasError: hasFailed,
                     onRetry: hasFailed && photoFileId != null
                         ? () => ref.retryDownload(photoFileId!)

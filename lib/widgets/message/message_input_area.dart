@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:photo_manager/photo_manager.dart';
 import '../../domain/entities/chat.dart';
 import '../../presentation/providers/app_providers.dart';
 import '../emoji_sticker/emoji_sticker_picker.dart';
+import 'media_picker/media_picker_panel.dart';
 
 class MessageInputArea extends ConsumerStatefulWidget {
   final Chat chat;
@@ -253,10 +255,7 @@ class _MessageInputAreaState extends ConsumerState<MessageInputArea>
           ),
           Expanded(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                minHeight: 40,
-                maxHeight: 120,
-              ),
+              constraints: const BoxConstraints(minHeight: 40, maxHeight: 120),
               child: TextField(
                 controller: _textController,
                 focusNode: _focusNode,
@@ -371,94 +370,57 @@ class _MessageInputAreaState extends ConsumerState<MessageInputArea>
   }
 
   void _showAttachmentOptions() {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Send Attachment',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: colorScheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildAttachmentOption(
-                    icon: Icons.photo_library,
-                    label: 'Gallery',
-                    color: Colors.purple,
-                    onTap: () {
-                      Navigator.pop(context);
-                      _pickFromGallery();
-                    },
-                  ),
-                  _buildAttachmentOption(
-                    icon: Icons.camera_alt,
-                    label: 'Camera',
-                    color: colorScheme.primary,
-                    onTap: () {
-                      Navigator.pop(context);
-                      _pickFromCamera();
-                    },
-                  ),
-                  _buildAttachmentOption(
-                    icon: Icons.insert_drive_file,
-                    label: 'Document',
-                    color: Colors.orange,
-                    onTap: () {
-                      Navigator.pop(context);
-                      _pickDocument();
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-            ],
-          ),
-        ),
-      ),
-    );
+    MediaPickerPanel.show(context: context, onSend: _sendSelectedMedia);
   }
 
-  Future<void> _pickFromGallery() async {
-    try {
-      final picker = ImagePicker();
-      final media = await picker.pickMedia();
-      if (media != null) {
-        final path = media.path.toLowerCase();
-        final isVideo =
-            path.endsWith('.mp4') ||
-            path.endsWith('.mov') ||
-            path.endsWith('.avi') ||
-            path.endsWith('.webm') ||
-            path.endsWith('.mkv');
+  Future<void> _sendSelectedMedia(
+    List<AssetEntity> items,
+    String? caption,
+  ) async {
+    final chatId = widget.chat.id;
+    final notifier = ref.read(messageProvider.notifier);
 
-        if (isVideo) {
-          await ref
-              .read(messageProvider.notifier)
-              .sendVideo(widget.chat.id, media.path);
-        } else {
-          await ref
-              .read(messageProvider.notifier)
-              .sendPhoto(widget.chat.id, media.path);
-        }
+    // Use caption from text input if not explicitly provided
+    final effectiveCaption = caption ?? _textController.text.trim();
+    final hasCaption = effectiveCaption.isNotEmpty;
+
+    // Resolve file paths and determine types
+    final resolvedItems = <(String path, bool isVideo)>[];
+    for (final asset in items) {
+      final file = await asset.file;
+      if (file == null) continue;
+      resolvedItems.add((file.path, asset.type == AssetType.video));
+    }
+
+    if (resolvedItems.isEmpty) return;
+
+    if (resolvedItems.length == 1) {
+      final (path, isVideo) = resolvedItems.first;
+      if (isVideo) {
+        await notifier.sendVideo(
+          chatId,
+          path,
+          caption: hasCaption ? effectiveCaption : null,
+        );
+      } else {
+        await notifier.sendPhoto(
+          chatId,
+          path,
+          caption: hasCaption ? effectiveCaption : null,
+        );
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to pick media: $e')));
-      }
+    } else {
+      await notifier.sendAlbum(
+        chatId,
+        resolvedItems,
+        caption: hasCaption ? effectiveCaption : null,
+      );
+    }
+
+    // Clear text field if caption was used from it
+    if (hasCaption && caption == null) {
+      _textController.clear();
+      setState(() => _isMultiline = false);
     }
   }
 
@@ -505,37 +467,6 @@ class _MessageInputAreaState extends ConsumerState<MessageInputArea>
         ).showSnackBar(SnackBar(content: Text('Failed to pick document: $e')));
       }
     }
-  }
-
-  Widget _buildAttachmentOption({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            child: Icon(icon, color: Colors.white, size: 28),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: colorScheme.onSurface.withValues(alpha: 0.6),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   void _showEmojiPicker() {

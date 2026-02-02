@@ -42,7 +42,9 @@ class TelegramEmojiWidget extends ConsumerWidget {
 
     // Debug logging
     assetPath.whenData((path) {
-      _logger.debug('Emoji asset: emoji="$emoji" codepoint=$codepoint path=$path');
+      _logger.debug(
+        'Emoji asset: emoji="$emoji" codepoint=$codepoint path=$path',
+      );
     });
 
     return GestureDetector(
@@ -53,7 +55,7 @@ class TelegramEmojiWidget extends ConsumerWidget {
         child: assetPath.when(
           data: (path) => _buildEmoji(path),
           loading: () => _buildLoading(),
-          error: (_, __) => _buildError(),
+          error: (_, _) => _buildError(),
         ),
       ),
     );
@@ -101,7 +103,10 @@ class TelegramEmojiWidget extends ConsumerWidget {
             );
           }
           if (snapshot.hasError) {
-            _logger.error('TGS decompress error for ${file.path}', error: snapshot.error);
+            _logger.error(
+              'TGS decompress error for ${file.path}',
+              error: snapshot.error,
+            );
             return _buildError();
           }
           return _buildLoading();

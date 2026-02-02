@@ -72,7 +72,9 @@ class _EmojiSearchWidgetState extends ConsumerState<EmojiSearchWidget> {
                   decoration: InputDecoration(
                     hintText: 'Search emoji...',
                     hintStyle: TextStyle(
-                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                      color: colorScheme.onSurfaceVariant.withValues(
+                        alpha: 0.6,
+                      ),
                     ),
                     prefixIcon: Icon(
                       Icons.search,
@@ -110,9 +112,7 @@ class _EmojiSearchWidgetState extends ConsumerState<EmojiSearchWidget> {
         ),
 
         // Search results
-        Expanded(
-          child: _buildSearchResults(),
-        ),
+        Expanded(child: _buildSearchResults()),
       ],
     );
   }
@@ -138,7 +138,7 @@ class _EmojiSearchWidgetState extends ConsumerState<EmojiSearchWidget> {
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, __) => _buildError(),
+      error: (_, _) => _buildError(),
     );
   }
 
@@ -239,10 +239,7 @@ class EmojiSearchBar extends StatelessWidget {
   /// Callback when search is tapped
   final VoidCallback? onTap;
 
-  const EmojiSearchBar({
-    super.key,
-    this.onTap,
-  });
+  const EmojiSearchBar({super.key, this.onTap});
 
   @override
   Widget build(BuildContext context) {

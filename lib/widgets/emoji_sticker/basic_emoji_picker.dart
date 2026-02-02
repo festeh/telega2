@@ -113,7 +113,11 @@ class _BasicEmojiPickerState extends ConsumerState<BasicEmojiPicker>
 
     if (selection.isValid && selection.start > 0) {
       // Delete character before cursor
-      final newText = text.replaceRange(selection.start - 1, selection.start, '');
+      final newText = text.replaceRange(
+        selection.start - 1,
+        selection.start,
+        '',
+      );
       controller.value = TextEditingValue(
         text: newText,
         selection: TextSelection.collapsed(offset: selection.start - 1),
@@ -146,9 +150,7 @@ class _BasicEmojiPickerState extends ConsumerState<BasicEmojiPicker>
             dividerColor: Colors.transparent,
             tabAlignment: TabAlignment.start,
             tabs: _categories.map((category) {
-              return Tab(
-                icon: Icon(_getCategoryIcon(category), size: 20),
-              );
+              return Tab(icon: Icon(_getCategoryIcon(category), size: 20));
             }).toList(),
           ),
         ),
@@ -213,13 +215,17 @@ class _BasicEmojiPickerState extends ConsumerState<BasicEmojiPicker>
                 Icon(
                   Icons.access_time,
                   size: 48,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'No recent emojis',
                   style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                   ),
                 ),
               ],
@@ -235,7 +241,7 @@ class _BasicEmojiPickerState extends ConsumerState<BasicEmojiPicker>
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, __) => const Center(child: Text('Error loading recent emojis')),
+      error: (_, _) => const Center(child: Text('Error loading recent emojis')),
     );
   }
 
@@ -309,7 +315,9 @@ class QuickEmojiButton extends ConsumerWidget {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
