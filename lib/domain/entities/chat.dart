@@ -339,6 +339,8 @@ class Message {
   final List<MessageReaction>? reactions;
   // Reply
   final int? replyToMessageId;
+  // Forward attribution
+  final String? forwardedFrom;
 
   const Message({
     required this.id,
@@ -356,12 +358,14 @@ class Message {
     this.linkPreview,
     this.reactions,
     this.replyToMessageId,
+    this.forwardedFrom,
   });
 
   factory Message.fromJson(
     Map<String, dynamic> json, {
     String? senderName,
     LinkPreviewInfo? linkPreview,
+    String? forwardedFrom,
   }) {
     // Parse message content from TDLib format
     String parseContent(Map<String, dynamic>? contentMap) {
@@ -617,6 +621,7 @@ class Message {
       linkPreview: linkPreview,
       reactions: reactions,
       replyToMessageId: replyToMessageId,
+      forwardedFrom: forwardedFrom,
     );
   }
 
@@ -669,6 +674,7 @@ class Message {
           )
           .toList(),
       'reply_to_message_id': replyToMessageId,
+      if (forwardedFrom != null) 'forwarded_from': forwardedFrom,
     };
   }
 
@@ -688,6 +694,7 @@ class Message {
     LinkPreviewInfo? linkPreview,
     List<MessageReaction>? reactions,
     int? replyToMessageId,
+    String? forwardedFrom,
   }) {
     return Message(
       id: id ?? this.id,
@@ -705,6 +712,7 @@ class Message {
       linkPreview: linkPreview ?? this.linkPreview,
       reactions: reactions ?? this.reactions,
       replyToMessageId: replyToMessageId ?? this.replyToMessageId,
+      forwardedFrom: forwardedFrom ?? this.forwardedFrom,
     );
   }
 

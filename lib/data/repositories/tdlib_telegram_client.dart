@@ -319,27 +319,27 @@ class TdlibTelegramClient implements TelegramClientRepository {
       }
     }
 
-    // For forwarded messages, prefer the original sender name
+    // Extract forward attribution separately from sender name
     final forwardInfo = json['forward_info'] as Map<String, dynamic>?;
-    if (forwardInfo != null && senderName == null) {
+    String? forwardedFrom;
+    if (forwardInfo != null) {
       final origin = forwardInfo['origin'] as Map<String, dynamic>?;
       if (origin != null) {
         final originType = origin['@type'] as String?;
         if (originType == 'messageOriginChannel') {
-          // Get original channel name
           final originChatId = origin['chat_id'] as int?;
           if (originChatId != null) {
             final originChat = _chats[originChatId];
-            senderName =
+            forwardedFrom =
                 originChat?.title ?? origin['author_signature'] as String?;
           }
         } else if (originType == 'messageOriginUser') {
           final originUserId = origin['sender_user_id'] as int?;
           if (originUserId != null) {
-            senderName = _userNames[originUserId];
+            forwardedFrom = _userNames[originUserId];
           }
         } else if (originType == 'messageOriginHiddenUser') {
-          senderName = origin['sender_name'] as String?;
+          forwardedFrom = origin['sender_name'] as String?;
         }
       }
     }
@@ -390,6 +390,7 @@ class TdlibTelegramClient implements TelegramClientRepository {
       json,
       senderName: senderName,
       linkPreview: linkPreviewInfo,
+      forwardedFrom: forwardedFrom,
     );
 
     // For cross-chat replies, extract and cache the reply preview from reply_to

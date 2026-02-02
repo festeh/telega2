@@ -93,6 +93,27 @@ class MessageBubble extends ConsumerWidget {
     );
   }
 
+  Widget _buildForwardedFrom(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isOutgoing = message.isOutgoing;
+    final textColor = isOutgoing
+        ? colorScheme.onPrimary.withValues(alpha: 0.6)
+        : colorScheme.onSurface.withValues(alpha: 0.5);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Text(
+        'Forwarded from ${message.forwardedFrom}',
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+          fontStyle: FontStyle.italic,
+          color: textColor,
+        ),
+      ),
+    );
+  }
+
   Widget _buildMessageBubble(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     final isOutgoing = message.isOutgoing;
@@ -127,6 +148,8 @@ class MessageBubble extends ConsumerWidget {
           children: [
             if (message.replyToMessageId != null)
               _buildReplyPreview(context, ref),
+            if (message.forwardedFrom != null)
+              _buildForwardedFrom(context),
             _buildMessageContent(context),
           ],
         ),
