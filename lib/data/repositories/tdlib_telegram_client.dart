@@ -1350,18 +1350,8 @@ class TdlibTelegramClient implements TelegramClientRepository {
         },
       };
 
-      // Use async request to get the pending message immediately
-      final response = await _sendRequestAsync(
-        request,
-        timeout: const Duration(seconds: 10),
-      );
-      if (response != null && response['@type'] == 'message') {
-        // TDLib returns the message with a temp ID and sending_state = pending
-        // We need to add it to cache and notify UI immediately
-        final pendingMessage = _createMessageFromJson(response);
-        _addMessageToCache(chatId, pendingMessage, insertAtStart: true);
-        _messageEventController.add(MessageAddedEvent(chatId, pendingMessage));
-      }
+      // TDLib's updateNewMessage will handle adding to cache and UI
+      await _sendRequestAsync(request, timeout: const Duration(seconds: 10));
     } catch (e) {
       _logger.logError('Failed to send photo to chat $chatId', error: e);
       rethrow;
@@ -1392,18 +1382,8 @@ class TdlibTelegramClient implements TelegramClientRepository {
         },
       };
 
-      // Use async request to get the pending message immediately
-      final response = await _sendRequestAsync(
-        request,
-        timeout: const Duration(seconds: 10),
-      );
-      if (response != null && response['@type'] == 'message') {
-        // TDLib returns the message with a temp ID and sending_state = pending
-        // We need to add it to cache and notify UI immediately
-        final pendingMessage = _createMessageFromJson(response);
-        _addMessageToCache(chatId, pendingMessage, insertAtStart: true);
-        _messageEventController.add(MessageAddedEvent(chatId, pendingMessage));
-      }
+      // TDLib's updateNewMessage will handle adding to cache and UI
+      await _sendRequestAsync(request, timeout: const Duration(seconds: 10));
     } catch (e) {
       _logger.logError('Failed to send video to chat $chatId', error: e);
       rethrow;
@@ -1434,16 +1414,8 @@ class TdlibTelegramClient implements TelegramClientRepository {
         },
       };
 
-      // Use async request to get the pending message immediately
-      final response = await _sendRequestAsync(
-        request,
-        timeout: const Duration(seconds: 10),
-      );
-      if (response != null && response['@type'] == 'message') {
-        final pendingMessage = _createMessageFromJson(response);
-        _addMessageToCache(chatId, pendingMessage, insertAtStart: true);
-        _messageEventController.add(MessageAddedEvent(chatId, pendingMessage));
-      }
+      // TDLib's updateNewMessage will handle adding to cache and UI
+      await _sendRequestAsync(request, timeout: const Duration(seconds: 10));
     } catch (e) {
       _logger.logError('Failed to send document to chat $chatId', error: e);
       rethrow;
@@ -1490,23 +1462,8 @@ class TdlibTelegramClient implements TelegramClientRepository {
         'input_message_contents': inputContents,
       };
 
-      final response = await _sendRequestAsync(
-        request,
-        timeout: const Duration(seconds: 15),
-      );
-      if (response != null && response['@type'] == 'messages') {
-        final messagesList = response['messages'] as List<dynamic>? ?? [];
-        for (final msgJson in messagesList) {
-          if (msgJson is Map<String, dynamic> &&
-              msgJson['@type'] == 'message') {
-            final pendingMessage = _createMessageFromJson(msgJson);
-            _addMessageToCache(chatId, pendingMessage, insertAtStart: true);
-            _messageEventController.add(
-              MessageAddedEvent(chatId, pendingMessage),
-            );
-          }
-        }
-      }
+      // TDLib's updateNewMessage will handle adding each message to cache and UI
+      await _sendRequestAsync(request, timeout: const Duration(seconds: 15));
     } catch (e) {
       _logger.logError(
         'Failed to send message album to chat $chatId',
