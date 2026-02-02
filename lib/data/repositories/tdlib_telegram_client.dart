@@ -741,6 +741,28 @@ class TdlibTelegramClient implements TelegramClientRepository {
           ChatLastMessageUpdatedEvent(chatId, message, message.date),
         );
       }
+
+      // Process positions array - TDLib sends updated chat positions
+      // alongside last message updates (e.g. chat moves into main list)
+      final positions =
+          chatId != null ? update['positions'] as List<dynamic>? : null;
+      for (final pos in positions ?? []) {
+        final position = pos as Map<String, dynamic>;
+        final list = position['list'] as Map<String, dynamic>?;
+        final isInMainList =
+            list?[TdlibFields.type] == TdlibChatListTypes.main;
+        final order = position['order'] as String?;
+        final hasValidPosition =
+            isInMainList && order != null && order != '0';
+
+        if (_chats.containsKey(chatId!)) {
+          _chats[chatId] =
+              _chats[chatId]!.copyWith(isInMainList: hasValidPosition);
+        }
+        _chatEventController.add(
+          ChatPositionChangedEvent(chatId, hasValidPosition),
+        );
+      }
     } catch (e) {
       _logger.logError('Error processing updateChatLastMessage', error: e);
     }
