@@ -367,7 +367,26 @@ class _MessageInputAreaState extends ConsumerState<MessageInputArea>
   }
 
   void _showAttachmentOptions() {
-    MediaPickerPanel.show(context: context, onSend: _sendSelectedMedia);
+    MediaPickerPanel.show(
+      context: context,
+      onSend: _sendSelectedMedia,
+      onFilePicked: _sendDocument,
+    );
+  }
+
+  Future<void> _sendDocument(String filePath) async {
+    final chatId = widget.chat.id;
+    final notifier = ref.read(messageProvider.notifier);
+    final caption = _textController.text.trim();
+    await notifier.sendDocument(
+      chatId,
+      filePath,
+      caption: caption.isNotEmpty ? caption : null,
+    );
+    if (caption.isNotEmpty) {
+      _textController.clear();
+      setState(() => _isMultiline = false);
+    }
   }
 
   Future<void> _sendSelectedMedia(

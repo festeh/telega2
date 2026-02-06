@@ -1497,6 +1497,23 @@ class TdlibTelegramClient implements TelegramClientRepository {
   }
 
   @override
+  Future<void> resendMessages(int chatId, List<int> messageIds) async {
+    try {
+      await _sendRequest({
+        '@type': 'resendMessages',
+        'chat_id': chatId,
+        'message_ids': messageIds,
+      });
+    } catch (e) {
+      _logger.logError(
+        'Failed to resend messages in chat $chatId',
+        error: e,
+      );
+      rethrow;
+    }
+  }
+
+  @override
   Future<void> markAsRead(int chatId, int messageId) async {
     try {
       await _sendRequest({
@@ -1973,11 +1990,23 @@ class TdlibTelegramClient implements TelegramClientRepository {
 
   void _handleMessageSendFailedUpdate(Map<String, dynamic> update) {
     try {
+      final messageData = update['message'] as Map<String, dynamic>?;
+      final oldMessageId = update['old_message_id'] as int? ?? 0;
       final error = update['error'] as Map<String, dynamic>?;
       final errorMessage = error?['message'] as String? ?? 'Unknown error';
 
-      // Emit typed event
-      _messageEventController.add(MessageSendFailedEvent(errorMessage));
+      if (messageData != null) {
+        final message = _createMessageFromJson(messageData);
+        final chatId = message.chatId;
+
+        // Update cache - replace old temp message with the failed one
+        _removeMessageFromCache(chatId, oldMessageId);
+        _addMessageToCache(chatId, message, insertAtStart: false);
+
+        _messageEventController.add(
+          MessageSendFailedEvent(chatId, message, oldMessageId, errorMessage),
+        );
+      }
     } catch (e) {
       _logger.logError('Error handling message send failed update', error: e);
     }

@@ -75,8 +75,13 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
         :final oldMessageId,
       ):
         _handleMessageSendSucceeded(chatId, message, oldMessageId);
-      case MessageSendFailedEvent(:final errorMessage):
-        _handleMessageSendFailed(errorMessage);
+      case MessageSendFailedEvent(
+        :final chatId,
+        :final message,
+        :final oldMessageId,
+        :final errorMessage,
+      ):
+        _handleMessageSendFailed(chatId, message, oldMessageId, errorMessage);
       case MessagesBatchReceivedEvent(:final chatId, :final messages):
         _handleMessagesBatch(chatId, messages);
       case MessagePhotoUpdatedEvent(
@@ -280,28 +285,71 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
     final currentState = state.value;
     if (currentState == null) return;
 
+    // Preserve local media paths from the pending message if the confirmed
+    // message doesn't have them yet (server file not downloaded).
+    final oldMessages = currentState.messagesByChat[chatId] ?? [];
+    final oldMessage = oldMessages.cast<Message?>().firstWhere(
+      (m) => m?.id == oldMessageId,
+      orElse: () => null,
+    );
+
+    var confirmedMessage = message.copyWith(
+      sendingState: MessageSendingState.sent,
+    );
+
+    if (oldMessage != null) {
+      // Preserve photo path
+      if (confirmedMessage.photo != null &&
+          (confirmedMessage.photo!.path == null ||
+              confirmedMessage.photo!.path!.isEmpty) &&
+          oldMessage.photo?.path != null &&
+          oldMessage.photo!.path!.isNotEmpty) {
+        confirmedMessage = confirmedMessage.copyWith(
+          photo: confirmedMessage.photo!.copyWith(path: oldMessage.photo!.path),
+        );
+      }
+      // Preserve video thumbnail path
+      if (confirmedMessage.video != null &&
+          (confirmedMessage.video!.thumbnailPath == null ||
+              confirmedMessage.video!.thumbnailPath!.isEmpty) &&
+          oldMessage.video?.thumbnailPath != null &&
+          oldMessage.video!.thumbnailPath!.isNotEmpty) {
+        confirmedMessage = confirmedMessage.copyWith(
+          video: confirmedMessage.video!.copyWith(
+            thumbnailPath: oldMessage.video!.thumbnailPath,
+          ),
+        );
+      }
+    }
+
     // Replace the pending message (oldMessageId) with the confirmed one
-    // and update state to sent
     final newState = currentState
         .removeMessage(chatId, oldMessageId)
-        .addMessage(
-          chatId,
-          message.copyWith(sendingState: MessageSendingState.sent),
-        )
+        .addMessage(chatId, confirmedMessage)
         .setSending(false);
     state = AsyncData(newState);
   }
 
-  void _handleMessageSendFailed(String errorMessage) {
-    _logger.error('Message send failed: $errorMessage');
+  void _handleMessageSendFailed(
+    int chatId,
+    Message message,
+    int oldMessageId,
+    String errorMessage,
+  ) {
+    _logger.error('Message send failed in chat $chatId: $errorMessage');
     final currentState = state.value;
-    if (currentState != null) {
-      state = AsyncData(
-        currentState
-            .setSending(false)
-            .setError('Failed to send message: $errorMessage'),
-      );
-    }
+    if (currentState == null) return;
+
+    // Replace the pending message with the failed one
+    final failedMessage = message.copyWith(
+      sendingState: MessageSendingState.failed,
+    );
+    final newState = currentState
+        .removeMessage(chatId, oldMessageId)
+        .addMessage(chatId, failedMessage)
+        .setSending(false)
+        .setError('Failed to send message: $errorMessage');
+    state = AsyncData(newState);
   }
 
   void _handleMessagesBatch(int chatId, List<Message> messages) {
@@ -533,6 +581,19 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
     } catch (e) {
       _logger.error('Failed to send album to chat $chatId', error: e);
       _setError('Failed to send album: $e');
+    }
+  }
+
+  Future<void> resendMessage(int chatId, int messageId) async {
+    try {
+      await _client.resendMessages(chatId, [messageId]);
+      _logger.debug('Resending message $messageId in chat $chatId');
+    } catch (e) {
+      _logger.error(
+        'Failed to resend message $messageId in chat $chatId',
+        error: e,
+      );
+      _setError('Failed to resend message: $e');
     }
   }
 

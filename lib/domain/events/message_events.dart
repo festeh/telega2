@@ -43,8 +43,16 @@ class MessageSendSucceededEvent extends MessageEvent {
 
 /// Emitted when a message send fails.
 class MessageSendFailedEvent extends MessageEvent {
+  final int chatId;
+  final Message message;
+  final int oldMessageId;
   final String errorMessage;
-  MessageSendFailedEvent(this.errorMessage);
+  MessageSendFailedEvent(
+    this.chatId,
+    this.message,
+    this.oldMessageId,
+    this.errorMessage,
+  );
 }
 
 /// Emitted when a batch of messages is received (e.g., from getChatHistory).

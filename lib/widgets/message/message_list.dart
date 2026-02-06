@@ -418,6 +418,17 @@ class _MessageListState extends ConsumerState<MessageList> {
                   return const SizedBox.shrink();
                 },
               ),
+              if (message.sendingState == MessageSendingState.failed)
+                ListTile(
+                  leading: const Icon(Icons.refresh),
+                  title: const Text('Resend'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    ref
+                        .read(messageProvider.notifier)
+                        .resendMessage(widget.chat.id, message.id);
+                  },
+                ),
               if (message.isOutgoing)
                 ListTile(
                   leading: const Icon(Icons.edit),

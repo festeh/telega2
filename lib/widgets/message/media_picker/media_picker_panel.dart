@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -7,8 +8,13 @@ import 'media_grid.dart';
 
 class MediaPickerPanel extends ConsumerStatefulWidget {
   final Future<void> Function(List<AssetEntity> items, String? caption) onSend;
+  final Future<void> Function(String filePath)? onFilePicked;
 
-  const MediaPickerPanel({super.key, required this.onSend});
+  const MediaPickerPanel({
+    super.key,
+    required this.onSend,
+    this.onFilePicked,
+  });
 
   @override
   ConsumerState<MediaPickerPanel> createState() => _MediaPickerPanelState();
@@ -17,12 +23,16 @@ class MediaPickerPanel extends ConsumerStatefulWidget {
     required BuildContext context,
     required Future<void> Function(List<AssetEntity> items, String? caption)
     onSend,
+    Future<void> Function(String filePath)? onFilePicked,
   }) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => MediaPickerPanel(onSend: onSend),
+      builder: (context) => MediaPickerPanel(
+        onSend: onSend,
+        onFilePicked: onFilePicked,
+      ),
     );
   }
 }
@@ -40,6 +50,9 @@ class _MediaPickerPanelState extends ConsumerState<MediaPickerPanel>
       final pickerState = ref.read(mediaPickerProvider);
       if (pickerState.permission == MediaPickerPermission.notDetermined) {
         ref.read(mediaPickerProvider.notifier).requestPermissionAndLoad();
+      } else if (pickerState.permission == MediaPickerPermission.authorized ||
+          pickerState.permission == MediaPickerPermission.limited) {
+        ref.read(mediaPickerProvider.notifier).refresh();
       }
     });
   }
@@ -53,10 +66,7 @@ class _MediaPickerPanelState extends ConsumerState<MediaPickerPanel>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      final pickerState = ref.read(mediaPickerProvider);
-      if (pickerState.permission == MediaPickerPermission.denied) {
-        ref.read(mediaPickerProvider.notifier).requestPermissionAndLoad();
-      }
+      ref.read(mediaPickerProvider.notifier).refresh();
     }
   }
 
@@ -76,6 +86,16 @@ class _MediaPickerPanelState extends ConsumerState<MediaPickerPanel>
         _selectedItems.add(asset);
       }
     });
+  }
+
+  Future<void> _pickFile() async {
+    final result = await FilePicker.platform.pickFiles();
+    if (result == null || result.files.isEmpty) return;
+    final path = result.files.single.path;
+    if (path == null) return;
+
+    if (mounted) Navigator.pop(context);
+    await widget.onFilePicked?.call(path);
   }
 
   Future<void> _send() async {
@@ -143,6 +163,12 @@ class _MediaPickerPanelState extends ConsumerState<MediaPickerPanel>
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: Row(
         children: [
+          if (widget.onFilePicked != null)
+            TextButton.icon(
+              onPressed: _isSending ? null : _pickFile,
+              icon: const Icon(Icons.folder_outlined, size: 18),
+              label: const Text('File'),
+            ),
           const Spacer(),
           if (_selectedItems.isNotEmpty)
             _isSending
