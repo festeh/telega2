@@ -20,17 +20,17 @@ class EmojiCacheEntry {
     DateTime? lastUsed,
     DateTime? downloadedAt,
     this.fileSize = 0,
-  })  : lastUsed = lastUsed ?? DateTime.now(),
-        downloadedAt = downloadedAt ?? DateTime.now();
+  }) : lastUsed = lastUsed ?? DateTime.now(),
+       downloadedAt = downloadedAt ?? DateTime.now();
 
   Map<String, dynamic> toJson() => {
-        'codepoint': codepoint,
-        'staticPath': staticPath,
-        'animatedPath': animatedPath,
-        'lastUsed': lastUsed.toIso8601String(),
-        'downloadedAt': downloadedAt.toIso8601String(),
-        'fileSize': fileSize,
-      };
+    'codepoint': codepoint,
+    'staticPath': staticPath,
+    'animatedPath': animatedPath,
+    'lastUsed': lastUsed.toIso8601String(),
+    'downloadedAt': downloadedAt.toIso8601String(),
+    'fileSize': fileSize,
+  };
 
   factory EmojiCacheEntry.fromJson(Map<String, dynamic> json) =>
       EmojiCacheEntry(
@@ -89,7 +89,10 @@ class EmojiCache {
   bool isCached(String codepoint) => _entries.containsKey(codepoint);
 
   /// Get cached path for an emoji
-  Future<String?> getCachedPath(String codepoint, {bool animated = false}) async {
+  Future<String?> getCachedPath(
+    String codepoint, {
+    bool animated = false,
+  }) async {
     await _ensureInitialized();
 
     final entry = _entries[codepoint];

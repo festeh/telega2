@@ -65,6 +65,9 @@ class AppWrapper extends ConsumerStatefulWidget {
 
 class _AppWrapperState extends ConsumerState<AppWrapper>
     with WidgetsBindingObserver {
+  late final String _loadingPhrase =
+      _loadingPhrases[Random().nextInt(_loadingPhrases.length)];
+
   @override
   void initState() {
     super.initState();
@@ -117,94 +120,71 @@ class _AppWrapperState extends ConsumerState<AppWrapper>
         }
       },
       loading: () => _buildLoadingScreen(),
-      error: (error, stackTrace) => MaterialApp(
-        themeMode: ThemeMode.dark,
-        darkTheme: AppTheme.dark,
-        theme: AppTheme.dark,
-        home: Builder(
-          builder: (context) {
-            final colorScheme = Theme.of(context).colorScheme;
-            return Scaffold(
-              body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.error_outline,
-                      color: colorScheme.error,
-                      size: 64,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Failed to initialize app',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: colorScheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      error.toString(),
-                      style: TextStyle(color: colorScheme.error, fontSize: 14),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: () {
-                        ref.invalidate(authProvider);
-                      },
-                      child: const Text('Retry'),
-                    ),
-                  ],
+      error: (error, stackTrace) {
+        final colorScheme = Theme.of(context).colorScheme;
+        return Scaffold(
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, color: colorScheme.error, size: 64),
+                const SizedBox(height: 16),
+                Text(
+                  'Failed to initialize app',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
-              ),
-            );
-          },
-        ),
-      ),
+                const SizedBox(height: 8),
+                Text(
+                  error.toString(),
+                  style: TextStyle(color: colorScheme.error, fontSize: 14),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () {
+                    ref.invalidate(authProvider);
+                  },
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
   Widget _buildLoadingScreen() {
-    final phrase = _loadingPhrases[Random().nextInt(_loadingPhrases.length)];
-    return MaterialApp(
-      themeMode: ThemeMode.dark,
-      darkTheme: AppTheme.dark,
-      theme: AppTheme.dark,
-      home: Builder(
-        builder: (context) {
-          final colorScheme = Theme.of(context).colorScheme;
-          return Scaffold(
-            body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(color: colorScheme.primary),
-                  const SizedBox(height: 24),
-                  Text(
-                    phrase,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: colorScheme.onSurface.withValues(alpha: 0.7),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: 200,
-                    height: 2,
-                    child: LinearProgressIndicator(
-                      backgroundColor: colorScheme.surfaceContainerHighest,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        colorScheme.primary,
-                      ),
-                    ),
-                  ),
-                ],
+    final colorScheme = Theme.of(context).colorScheme;
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: colorScheme.primary),
+            const SizedBox(height: 24),
+            Text(
+              _loadingPhrase,
+              style: TextStyle(
+                fontSize: 16,
+                color: colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
-          );
-        },
+            const SizedBox(height: 12),
+            SizedBox(
+              width: 200,
+              height: 2,
+              child: LinearProgressIndicator(
+                backgroundColor: colorScheme.surfaceContainerHighest,
+                valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

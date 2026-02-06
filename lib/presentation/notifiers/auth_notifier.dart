@@ -27,6 +27,12 @@ class AuthNotifier extends AsyncNotifier<UnifiedAuthState> {
     // Set up state listening
     _listenToAuthChanges();
 
+    // Clean up on dispose
+    ref.onDispose(() {
+      _authSubscription?.cancel();
+      _authRepository?.dispose();
+    });
+
     // Return initial state
     return _getCurrentUnifiedState();
   }
@@ -120,11 +126,5 @@ class AuthNotifier extends AsyncNotifier<UnifiedAuthState> {
     state = AsyncData(
       currentState.copyWith(errorMessage: errorMessage, isLoading: false),
     );
-  }
-
-  // Cleanup - called when provider is disposed
-  void dispose() {
-    _authSubscription?.cancel();
-    _authRepository?.dispose();
   }
 }

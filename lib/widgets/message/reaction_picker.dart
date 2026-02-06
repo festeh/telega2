@@ -4,14 +4,7 @@ import 'package:telega2/widgets/emoji_sticker/telegram_emoji_widget.dart';
 import 'package:telega2/widgets/emoji_sticker/custom_emoji_picker.dart';
 
 /// Default quick reactions shown in the reaction picker
-const List<String> defaultQuickReactions = [
-  '👍',
-  '❤️',
-  '😂',
-  '😮',
-  '😢',
-  '🔥',
-];
+const List<String> defaultQuickReactions = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
 
 /// A compact reaction picker showing quick reactions with an expand button
 /// Used in message context menus for quick emoji reactions
@@ -65,7 +58,9 @@ class _ReactionPickerState extends ConsumerState<ReactionPicker> {
           mainAxisSize: MainAxisSize.min,
           children: [
             // Quick reaction emojis
-            ...widget.quickReactions.map((emoji) => _buildReactionButton(emoji)),
+            ...widget.quickReactions.map(
+              (emoji) => _buildReactionButton(emoji),
+            ),
 
             // Expand button
             if (widget.onExpandPressed != null) ...[
@@ -164,10 +159,7 @@ class ExpandedReactionPicker extends StatelessWidget {
                 ),
                 const Spacer(),
                 IconButton(
-                  icon: Icon(
-                    Icons.close,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
+                  icon: Icon(Icons.close, color: colorScheme.onSurfaceVariant),
                   onPressed: onClose,
                 ),
               ],
@@ -204,58 +196,6 @@ class ExpandedReactionPicker extends StatelessWidget {
         onReactionSelected: (emoji) => Navigator.pop(context, emoji),
         onClose: () => Navigator.pop(context),
       ),
-    );
-  }
-}
-
-/// A positioned reaction picker that appears near a message
-/// Used when long-pressing a message to add a reaction
-class PositionedReactionPicker extends StatelessWidget {
-  /// Position relative to the message
-  final Offset position;
-
-  /// Callback when a reaction is selected
-  final void Function(String emoji) onReactionSelected;
-
-  /// Callback when expand button is pressed
-  final VoidCallback? onExpandPressed;
-
-  /// Callback when dismissed
-  final VoidCallback? onDismissed;
-
-  const PositionedReactionPicker({
-    super.key,
-    required this.position,
-    required this.onReactionSelected,
-    this.onExpandPressed,
-    this.onDismissed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        // Dismiss overlay
-        Positioned.fill(
-          child: GestureDetector(
-            onTap: onDismissed,
-            child: Container(color: Colors.transparent),
-          ),
-        ),
-
-        // Picker
-        Positioned(
-          left: position.dx,
-          top: position.dy,
-          child: ReactionPicker(
-            onReactionSelected: (emoji) {
-              onReactionSelected(emoji);
-              onDismissed?.call();
-            },
-            onExpandPressed: onExpandPressed,
-          ),
-        ),
-      ],
     );
   }
 }

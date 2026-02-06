@@ -16,7 +16,7 @@ class AuthScreen extends ConsumerStatefulWidget {
 }
 
 class _AuthScreenState extends ConsumerState<AuthScreen>
-    with TickerProviderStateMixin {
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -100,7 +100,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                   Expanded(
                     child: TabBarView(
                       controller: _tabController,
-                      children: [_buildPhoneAuthTab(), _buildQrAuthTab()],
+                      children: [_buildPhoneAuthTab(), const QrAuthWidget()],
                     ),
                   ),
                 ],
@@ -126,10 +126,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     } else {
       return _buildSkeletonLoader();
     }
-  }
-
-  Widget _buildQrAuthTab() {
-    return const QrAuthWidget();
   }
 
   Widget _buildLoadingState(String message) {

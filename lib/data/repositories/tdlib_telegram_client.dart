@@ -745,20 +745,20 @@ class TdlibTelegramClient implements TelegramClientRepository {
 
       // Process positions array - TDLib sends updated chat positions
       // alongside last message updates (e.g. chat moves into main list)
-      final positions =
-          chatId != null ? update['positions'] as List<dynamic>? : null;
+      final positions = chatId != null
+          ? update['positions'] as List<dynamic>?
+          : null;
       for (final pos in positions ?? []) {
         final position = pos as Map<String, dynamic>;
         final list = position['list'] as Map<String, dynamic>?;
-        final isInMainList =
-            list?[TdlibFields.type] == TdlibChatListTypes.main;
+        final isInMainList = list?[TdlibFields.type] == TdlibChatListTypes.main;
         final order = position['order'] as String?;
-        final hasValidPosition =
-            isInMainList && order != null && order != '0';
+        final hasValidPosition = isInMainList && order != null && order != '0';
 
         if (_chats.containsKey(chatId!)) {
-          _chats[chatId] =
-              _chats[chatId]!.copyWith(isInMainList: hasValidPosition);
+          _chats[chatId] = _chats[chatId]!.copyWith(
+            isInMainList: hasValidPosition,
+          );
         }
         _chatEventController.add(
           ChatPositionChangedEvent(chatId, hasValidPosition),
@@ -1189,7 +1189,7 @@ class TdlibTelegramClient implements TelegramClientRepository {
   @override
   Future<Message?> getMessage(int chatId, int messageId) async {
     try {
-      final response = await _sendRequest({
+      final response = await _sendRequestAsync({
         '@type': 'getMessage',
         'chat_id': chatId,
         'message_id': messageId,
@@ -1876,13 +1876,23 @@ class TdlibTelegramClient implements TelegramClientRepository {
     }
   }
 
-  void _handleMessageEditedUpdate(Map<String, dynamic> update) {
+  void _handleMessageEditedUpdate(Map<String, dynamic> update) async {
     try {
-      final messageData = update['message'] as Map<String, dynamic>?;
-      if (messageData == null) return;
+      // updateMessageEdited only contains chat_id, message_id, edit_date, reply_markup
+      // We need to fetch the full updated message from TDLib
+      final chatId = update['chat_id'] as int?;
+      final messageId = update['message_id'] as int?;
+      if (chatId == null || messageId == null) return;
 
-      final message = _createMessageFromJson(messageData);
-      final chatId = message.chatId;
+      final response = await _sendRequestAsync({
+        '@type': 'getMessage',
+        'chat_id': chatId,
+        'message_id': messageId,
+      });
+
+      if (response == null || response['@type'] != 'message') return;
+
+      final message = _createMessageFromJson(response);
 
       // Update cache
       _addMessageToCache(chatId, message, insertAtStart: false);

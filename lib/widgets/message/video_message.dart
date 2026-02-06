@@ -161,6 +161,7 @@ class _FullScreenVideoPlayer extends StatefulWidget {
 
 class _FullScreenVideoPlayerState extends State<_FullScreenVideoPlayer> {
   late VideoPlayerController _controller;
+  late final FocusNode _focusNode;
   bool _isInitialized = false;
   bool _showControls = true;
   bool _isPlaying = false;
@@ -168,6 +169,8 @@ class _FullScreenVideoPlayerState extends State<_FullScreenVideoPlayer> {
   @override
   void initState() {
     super.initState();
+    _focusNode = FocusNode();
+    _focusNode.requestFocus();
     _initializeVideo();
   }
 
@@ -197,6 +200,7 @@ class _FullScreenVideoPlayerState extends State<_FullScreenVideoPlayer> {
 
   @override
   void dispose() {
+    _focusNode.dispose();
     _controller.removeListener(_videoListener);
     _controller.dispose();
     super.dispose();
@@ -231,7 +235,7 @@ class _FullScreenVideoPlayerState extends State<_FullScreenVideoPlayer> {
     return Scaffold(
       backgroundColor: Colors.black,
       body: KeyboardListener(
-        focusNode: FocusNode()..requestFocus(),
+        focusNode: _focusNode,
         onKeyEvent: (event) {
           if (event is KeyDownEvent) {
             if (event.logicalKey == LogicalKeyboardKey.escape) {

@@ -117,6 +117,7 @@ class _MessageListState extends ConsumerState<MessageList> {
             )
             .then((_) {
               _isAutoScrolling = false;
+              if (!mounted) return;
               if (!_shouldAutoScroll) {
                 setState(() {
                   _shouldAutoScroll = true;
@@ -156,10 +157,14 @@ class _MessageListState extends ConsumerState<MessageList> {
 
     // Watch messages for this specific chat to ensure rebuilds on new messages/reactions
     final messages = ref.watch(
-      messageProvider.select((state) => state.value?.messagesByChat[widget.chat.id]),
+      messageProvider.select(
+        (state) => state.value?.messagesByChat[widget.chat.id],
+      ),
     );
     final isChatInitialized = ref.watch(
-      messageProvider.select((state) => state.value?.isChatInitialized(widget.chat.id) ?? false),
+      messageProvider.select(
+        (state) => state.value?.isChatInitialized(widget.chat.id) ?? false,
+      ),
     );
     final isLoadingMore = ref.watch(
       messageProvider.select((state) => state.value?.isLoadingMore ?? false),
@@ -354,6 +359,7 @@ class _MessageListState extends ConsumerState<MessageList> {
         .read(telegramClientProvider)
         .getAvailableReactions(widget.chat.id, message.id);
 
+    final outerContext = context;
     showModalBottomSheet(
       context: context,
       builder: (context) => SafeArea(
@@ -386,11 +392,16 @@ class _MessageListState extends ConsumerState<MessageList> {
                               child: IconButton(
                                 icon: Icon(
                                   Icons.add_circle_outline,
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
                                 ),
                                 onPressed: () async {
                                   Navigator.pop(context);
-                                  final emoji = await ExpandedReactionPicker.show(context);
+                                  final emoji =
+                                      await ExpandedReactionPicker.show(
+                                        outerContext,
+                                      );
                                   if (emoji != null) {
                                     _addReaction(message, emoji);
                                   }

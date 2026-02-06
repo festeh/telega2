@@ -27,13 +27,6 @@ class UnifiedAuthState {
     isInitialized: false,
   );
 
-  factory UnifiedAuthState.error(String message) => UnifiedAuthState(
-    status: AuthorizationState.unknown,
-    errorMessage: message,
-    isLoading: false,
-    isInitialized: false,
-  );
-
   // Computed properties
   bool get isAuthenticated => status == AuthorizationState.ready;
   bool get needsPhoneNumber => status == AuthorizationState.waitPhoneNumber;
@@ -52,6 +45,7 @@ class UnifiedAuthState {
     CodeInfo? codeInfo,
     QrCodeInfo? qrCodeInfo,
     String? errorMessage,
+    bool clearErrorMessage = false,
     bool? isLoading,
     bool? isInitialized,
   }) {
@@ -60,7 +54,9 @@ class UnifiedAuthState {
       user: user ?? this.user,
       codeInfo: codeInfo ?? this.codeInfo,
       qrCodeInfo: qrCodeInfo ?? this.qrCodeInfo,
-      errorMessage: errorMessage ?? this.errorMessage,
+      errorMessage: clearErrorMessage
+          ? null
+          : (errorMessage ?? this.errorMessage),
       isLoading: isLoading ?? this.isLoading,
       isInitialized: isInitialized ?? this.isInitialized,
     );
@@ -68,7 +64,7 @@ class UnifiedAuthState {
 
   // Convenience method to clear error
   UnifiedAuthState clearError() {
-    return copyWith(errorMessage: null);
+    return copyWith(clearErrorMessage: true);
   }
 
   // Convenience method to set loading
@@ -103,12 +99,14 @@ class UnifiedAuthState {
 
   @override
   int get hashCode {
-    return status.hashCode ^
-        user.hashCode ^
-        codeInfo.hashCode ^
-        qrCodeInfo.hashCode ^
-        errorMessage.hashCode ^
-        isLoading.hashCode ^
-        isInitialized.hashCode;
+    return Object.hash(
+      status,
+      user,
+      codeInfo,
+      qrCodeInfo,
+      errorMessage,
+      isLoading,
+      isInitialized,
+    );
   }
 }

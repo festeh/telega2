@@ -32,18 +32,6 @@ class MessageState {
   factory MessageState.initial() =>
       const MessageState(isLoading: false, isInitialized: false);
 
-  factory MessageState.error(String message) => MessageState(
-    errorMessage: message,
-    isLoading: false,
-    isInitialized: false,
-  );
-
-  factory MessageState.loaded(Map<int, List<Message>> messages) => MessageState(
-    messagesByChat: messages,
-    isLoading: false,
-    isInitialized: true,
-  );
-
   // Copy with method for immutable updates
   // Use clearReplyingTo flag to explicitly clear replyingToMessage
   MessageState copyWith({
@@ -54,6 +42,7 @@ class MessageState {
     bool? isLoadingMore,
     bool? isSending,
     String? errorMessage,
+    bool clearErrorMessage = false,
     bool? isInitialized,
     Message? replyingToMessage,
     bool clearReplyingTo = false,
@@ -66,7 +55,9 @@ class MessageState {
       isLoading: isLoading ?? this.isLoading,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       isSending: isSending ?? this.isSending,
-      errorMessage: errorMessage,
+      errorMessage: clearErrorMessage
+          ? null
+          : (errorMessage ?? this.errorMessage),
       isInitialized: isInitialized ?? this.isInitialized,
       replyingToMessage: clearReplyingTo
           ? null
@@ -99,7 +90,7 @@ class MessageState {
   MessageState setLoadingMore(bool loadingMore) =>
       copyWith(isLoadingMore: loadingMore);
   MessageState setSending(bool sending) => copyWith(isSending: sending);
-  MessageState clearError() => copyWith(errorMessage: null);
+  MessageState clearError() => copyWith(clearErrorMessage: true);
   MessageState setError(String error) =>
       copyWith(errorMessage: error, isLoading: false);
   MessageState selectChat(int chatId) => copyWith(selectedChatId: chatId);
@@ -195,12 +186,6 @@ class MessageState {
           .where((message) => message.id != messageId)
           .toList();
     }
-    return copyWith(messagesByChat: newMessages);
-  }
-
-  MessageState clearChatMessages(int chatId) {
-    final newMessages = Map<int, List<Message>>.from(messagesByChat);
-    newMessages[chatId] = [];
     return copyWith(messagesByChat: newMessages);
   }
 

@@ -15,7 +15,7 @@ class EmojiRepositoryImpl implements EmojiRepository {
   bool _initialized = false;
 
   EmojiRepositoryImpl({EmojiAssetManager? assetManager})
-      : _assetManager = assetManager ?? EmojiAssetManager();
+    : _assetManager = assetManager ?? EmojiAssetManager();
 
   @override
   Future<void> initialize() async {
@@ -82,7 +82,9 @@ class EmojiRepositoryImpl implements EmojiRepository {
     await _ensureInitialized();
 
     // Find existing or create new
-    final existingIndex = _recentEmojis.indexWhere((r) => r.codepoint == codepoint);
+    final existingIndex = _recentEmojis.indexWhere(
+      (r) => r.codepoint == codepoint,
+    );
 
     if (existingIndex >= 0) {
       // Update existing

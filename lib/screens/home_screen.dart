@@ -8,6 +8,7 @@ import '../domain/entities/chat.dart';
 import '../widgets/home/left_pane.dart';
 import '../widgets/message/message_list.dart';
 import '../widgets/message/message_input_area.dart';
+import 'chat_helpers.dart';
 import 'chat_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -98,7 +99,7 @@ class HomeScreen extends ConsumerWidget {
     final client = ref.read(telegramClientProvider);
 
     // Get status text based on chat type
-    String statusText = _getChatStatusText(chat, client);
+    String statusText = getChatStatusText(chat, client);
 
     return Container(
       height: 60,
@@ -179,7 +180,7 @@ class HomeScreen extends ConsumerWidget {
           PopupMenuButton<String>(
             onSelected: (value) {
               if (value == 'logout') {
-                _showLogoutDialog(context, ref);
+                showLogoutDialog(context, ref);
               }
             },
             itemBuilder: (context) => [
@@ -214,42 +215,5 @@ class HomeScreen extends ConsumerWidget {
   Widget _buildEmptyPane(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return Container(color: colorScheme.surface);
-  }
-
-  String _getChatStatusText(Chat chat, dynamic client) {
-    switch (chat.type) {
-      case ChatType.private:
-        // For private chats, the user ID equals the chat ID
-        final status = client.getUserStatus(chat.id);
-        return status ?? '';
-      case ChatType.basicGroup:
-      case ChatType.supergroup:
-      case ChatType.channel:
-      case ChatType.secret:
-        return '';
-    }
-  }
-
-  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              ref.logout();
-            },
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
-    );
   }
 }

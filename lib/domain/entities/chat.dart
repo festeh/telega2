@@ -254,24 +254,6 @@ class Chat {
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'title': title,
-      'type': type.toString().split('.').last,
-      'photo_path': photoPath,
-      'photo_file_id': photoFileId,
-      'last_message': lastMessage?.toJson(),
-      'unread_count': unreadCount,
-      'is_pinned': isPinned,
-      'last_activity': lastActivity?.millisecondsSinceEpoch,
-      'is_muted': isMuted,
-      'total_count': totalCount,
-      'is_in_main_list': isInMainList,
-      'can_send_messages': canSendMessages,
-    };
-  }
-
   Chat copyWith({
     int? id,
     String? title,
@@ -623,59 +605,6 @@ class Message {
       replyToMessageId: replyToMessageId,
       forwardedFrom: forwardedFrom,
     );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'chat_id': chatId,
-      'sender_id': senderId,
-      'sender_name': senderName,
-      'date': date.millisecondsSinceEpoch ~/ 1000,
-      'content': content,
-      'is_outgoing': isOutgoing,
-      'type': type.toString().split('.').last,
-      'sending_state': sendingState?.name,
-      if (photo != null)
-        'photo': {
-          'path': photo!.path,
-          'file_id': photo!.fileId,
-          'width': photo!.width,
-          'height': photo!.height,
-        },
-      if (sticker != null)
-        'sticker': {
-          'path': sticker!.path,
-          'file_id': sticker!.fileId,
-          'width': sticker!.width,
-          'height': sticker!.height,
-          'emoji': sticker!.emoji,
-          'is_animated': sticker!.isAnimated,
-        },
-      if (video != null)
-        'video': {
-          'path': video!.path,
-          'file_id': video!.fileId,
-          'width': video!.width,
-          'height': video!.height,
-          'duration': video!.duration,
-          'thumbnail_path': video!.thumbnailPath,
-          'thumbnail_file_id': video!.thumbnailFileId,
-        },
-      'reactions': reactions
-          ?.map(
-            (r) => {
-              'type': r.type.name,
-              'emoji': r.emoji,
-              'custom_emoji_id': r.customEmojiId,
-              'count': r.count,
-              'is_chosen': r.isChosen,
-            },
-          )
-          .toList(),
-      'reply_to_message_id': replyToMessageId,
-      if (forwardedFrom != null) 'forwarded_from': forwardedFrom,
-    };
   }
 
   Message copyWith({

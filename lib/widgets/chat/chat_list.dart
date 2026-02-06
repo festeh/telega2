@@ -41,20 +41,16 @@ class _ChatListState extends ConsumerState<ChatList> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer(
-      builder: (context, ref, child) {
-        final chatAsync = ref.watch(chatProvider);
+    final chatAsync = ref.watch(chatProvider);
 
-        return chatAsync.when(
-          data: (chatState) => _buildChatList(
-            chatState.chats,
-            chatState.isLoading,
-            chatState.isInitialized,
-          ),
-          loading: () => _buildLoadingState(),
-          error: (error, stackTrace) => _buildErrorState(error.toString()),
-        );
-      },
+    return chatAsync.when(
+      data: (chatState) => _buildChatList(
+        chatState.chats,
+        chatState.isLoading,
+        chatState.isInitialized,
+      ),
+      loading: () => _buildLoadingState(),
+      error: (error, stackTrace) => _buildErrorState(error.toString()),
     );
   }
 

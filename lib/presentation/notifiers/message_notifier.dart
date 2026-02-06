@@ -15,10 +15,17 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
   StreamSubscription<MessageEvent>? _eventSubscription;
   final AppLogger _logger = AppLogger.instance;
 
+  MessageState get _currentState => state.value ?? MessageState.initial();
+
   @override
   Future<MessageState> build() async {
     // Start listening to message events
     _listenToMessageEvents();
+
+    // Clean up on dispose
+    ref.onDispose(() {
+      _eventSubscription?.cancel();
+    });
 
     // Load last selected chat from storage
     final prefs = await SharedPreferences.getInstance();
@@ -316,7 +323,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
 
   Future<void> loadMessages(int chatId, {bool forceRefresh = false}) async {
     try {
-      final currentState = state.value ?? MessageState.initial();
+      final currentState = _currentState;
 
       // Set loading state
       state = AsyncData(currentState.selectChat(chatId).setLoading(true));
@@ -401,7 +408,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
     if (text.trim().isEmpty) return;
 
     try {
-      final currentState = state.value ?? MessageState.initial();
+      final currentState = _currentState;
       final replyToMessageId = currentState.replyingToMessage?.id;
       state = AsyncData(currentState.setSending(true));
 
@@ -416,9 +423,8 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
 
       _logger.debug('Message sent to chat $chatId');
 
-      final latestState = state.value ?? MessageState.initial();
       // Clear reply state after sending
-      state = AsyncData(latestState.setSending(false).clearReplyingTo());
+      state = AsyncData(_currentState.setSending(false).clearReplyingTo());
     } catch (e) {
       _logger.error('Failed to send message to chat $chatId', error: e);
       _setError('Failed to send message: $e');
@@ -440,7 +446,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
 
   Future<void> sendPhoto(int chatId, String filePath, {String? caption}) async {
     try {
-      final currentState = state.value ?? MessageState.initial();
+      final currentState = _currentState;
       final replyToMessageId = currentState.replyingToMessage?.id;
       state = AsyncData(currentState.setSending(true));
 
@@ -452,8 +458,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
       );
       _logger.debug('Photo sent to chat $chatId');
 
-      final latestState = state.value ?? MessageState.initial();
-      state = AsyncData(latestState.setSending(false).clearReplyingTo());
+      state = AsyncData(_currentState.setSending(false).clearReplyingTo());
     } catch (e) {
       _logger.error('Failed to send photo to chat $chatId', error: e);
       _setError('Failed to send photo: $e');
@@ -462,7 +467,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
 
   Future<void> sendVideo(int chatId, String filePath, {String? caption}) async {
     try {
-      final currentState = state.value ?? MessageState.initial();
+      final currentState = _currentState;
       final replyToMessageId = currentState.replyingToMessage?.id;
       state = AsyncData(currentState.setSending(true));
 
@@ -474,8 +479,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
       );
       _logger.debug('Video sent to chat $chatId');
 
-      final latestState = state.value ?? MessageState.initial();
-      state = AsyncData(latestState.setSending(false).clearReplyingTo());
+      state = AsyncData(_currentState.setSending(false).clearReplyingTo());
     } catch (e) {
       _logger.error('Failed to send video to chat $chatId', error: e);
       _setError('Failed to send video: $e');
@@ -488,7 +492,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
     String? caption,
   }) async {
     try {
-      final currentState = state.value ?? MessageState.initial();
+      final currentState = _currentState;
       final replyToMessageId = currentState.replyingToMessage?.id;
       state = AsyncData(currentState.setSending(true));
 
@@ -500,8 +504,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
       );
       _logger.debug('Document sent to chat $chatId');
 
-      final latestState = state.value ?? MessageState.initial();
-      state = AsyncData(latestState.setSending(false).clearReplyingTo());
+      state = AsyncData(_currentState.setSending(false).clearReplyingTo());
     } catch (e) {
       _logger.error('Failed to send document to chat $chatId', error: e);
       _setError('Failed to send document: $e');
@@ -514,7 +517,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
     String? caption,
   }) async {
     try {
-      final currentState = state.value ?? MessageState.initial();
+      final currentState = _currentState;
       final replyToMessageId = currentState.replyingToMessage?.id;
       state = AsyncData(currentState.setSending(true));
 
@@ -526,8 +529,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
       );
       _logger.debug('Album of ${items.length} items sent to chat $chatId');
 
-      final latestState = state.value ?? MessageState.initial();
-      state = AsyncData(latestState.setSending(false).clearReplyingTo());
+      state = AsyncData(_currentState.setSending(false).clearReplyingTo());
     } catch (e) {
       _logger.error('Failed to send album to chat $chatId', error: e);
       _setError('Failed to send album: $e');
@@ -590,8 +592,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
   }
 
   void selectChat(int chatId) async {
-    final currentState = state.value ?? MessageState.initial();
-    state = AsyncData(currentState.selectChat(chatId));
+    state = AsyncData(_currentState.selectChat(chatId));
 
     // Persist the selected chat ID
     final prefs = await SharedPreferences.getInstance();
@@ -600,8 +601,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
 
   // Reply management
   void setReplyingTo(Message message) {
-    final currentState = state.value ?? MessageState.initial();
-    state = AsyncData(currentState.setReplyingTo(message));
+    state = AsyncData(_currentState.setReplyingTo(message));
   }
 
   void clearReplyingTo() {
@@ -614,8 +614,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
   // State management helpers
 
   void _setError(String errorMessage) {
-    final currentState = state.value ?? MessageState.initial();
-    state = AsyncData(currentState.setError(errorMessage));
+    state = AsyncData(_currentState.setError(errorMessage));
   }
 
   void clearError() {
@@ -623,10 +622,5 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
     if (currentState != null) {
       state = AsyncData(currentState.clearError());
     }
-  }
-
-  // Cleanup
-  void dispose() {
-    _eventSubscription?.cancel();
   }
 }

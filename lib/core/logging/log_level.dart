@@ -19,25 +19,6 @@ extension LogModuleExtension on LogModule {
         return 'GENERAL';
     }
   }
-
-  String get emoji {
-    switch (this) {
-      case LogModule.auth:
-        return '🔐';
-      case LogModule.tdlib:
-        return '📱';
-      case LogModule.network:
-        return '🌐';
-      case LogModule.storage:
-        return '💾';
-      case LogModule.ui:
-        return '🎨';
-      case LogModule.performance:
-        return '⚡';
-      case LogModule.general:
-        return '🔧';
-    }
-  }
 }
 
 class LogContext {
@@ -54,22 +35,6 @@ class LogContext {
     this.requestId,
     this.metadata,
   });
-
-  LogContext copyWith({
-    LogModule? module,
-    String? userId,
-    String? sessionId,
-    String? requestId,
-    Map<String, dynamic>? metadata,
-  }) {
-    return LogContext(
-      module: module ?? this.module,
-      userId: userId ?? this.userId,
-      sessionId: sessionId ?? this.sessionId,
-      requestId: requestId ?? this.requestId,
-      metadata: metadata ?? this.metadata,
-    );
-  }
 
   Map<String, dynamic> toMap() {
     return {

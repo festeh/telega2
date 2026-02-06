@@ -1,8 +1,5 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:photo_manager/photo_manager.dart';
 import '../../domain/entities/chat.dart';
 import '../../presentation/providers/app_providers.dart';
@@ -421,51 +418,6 @@ class _MessageInputAreaState extends ConsumerState<MessageInputArea>
     if (hasCaption && caption == null) {
       _textController.clear();
       setState(() => _isMultiline = false);
-    }
-  }
-
-  Future<void> _pickFromCamera() async {
-    // Camera is not available on Linux desktop
-    if (Platform.isLinux) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Camera is not available on desktop')),
-        );
-      }
-      return;
-    }
-
-    try {
-      final picker = ImagePicker();
-      final image = await picker.pickImage(source: ImageSource.camera);
-      if (image != null) {
-        await ref
-            .read(messageProvider.notifier)
-            .sendPhoto(widget.chat.id, image.path);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to capture image: $e')));
-      }
-    }
-  }
-
-  Future<void> _pickDocument() async {
-    try {
-      final result = await FilePicker.platform.pickFiles();
-      if (result != null && result.files.single.path != null) {
-        await ref
-            .read(messageProvider.notifier)
-            .sendDocument(widget.chat.id, result.files.single.path!);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to pick document: $e')));
-      }
     }
   }
 

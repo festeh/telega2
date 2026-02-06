@@ -1,6 +1,5 @@
 import 'package:logger/logger.dart';
 import 'app_logger.dart';
-import 'log_level.dart';
 
 class TdlibLogger {
   static TdlibLogger? _instance;
@@ -171,103 +170,5 @@ class AuthLogger {
 
   void logError(String message, {Object? error, StackTrace? stackTrace}) {
     _logger.authLog(Level.error, message, error: error, stackTrace: stackTrace);
-  }
-}
-
-class NetworkLogger {
-  static NetworkLogger? _instance;
-  static NetworkLogger get instance => _instance ??= NetworkLogger._();
-
-  final AppLogger _logger = AppLogger.instance;
-
-  NetworkLogger._();
-
-  void logRequest(
-    String method,
-    String url, {
-    String? requestId,
-    Map<String, String>? headers,
-    dynamic body,
-  }) {
-    _logger.networkLog(
-      Level.debug,
-      'HTTP Request: $method $url',
-      requestId: requestId,
-      metadata: {
-        'method': method,
-        'url': url,
-        'headers': headers,
-        'body': body,
-      },
-    );
-  }
-
-  void logResponse(
-    int statusCode,
-    String url, {
-    String? requestId,
-    Duration? duration,
-  }) {
-    _logger.networkLog(
-      Level.debug,
-      'HTTP Response: $statusCode for $url',
-      requestId: requestId,
-      metadata: {
-        'status_code': statusCode,
-        'url': url,
-        if (duration != null) 'duration_ms': duration.inMilliseconds,
-      },
-    );
-  }
-
-  void logError(
-    String message, {
-    String? requestId,
-    Object? error,
-    StackTrace? stackTrace,
-  }) {
-    _logger.networkLog(
-      Level.error,
-      message,
-      requestId: requestId,
-      error: error,
-      stackTrace: stackTrace,
-    );
-  }
-}
-
-class PerformanceLogger {
-  static PerformanceLogger? _instance;
-  static PerformanceLogger get instance => _instance ??= PerformanceLogger._();
-
-  final AppLogger _logger = AppLogger.instance;
-  final Map<String, DateTime> _operationStarts = {};
-
-  PerformanceLogger._();
-
-  void startOperation(String operationId) {
-    _operationStarts[operationId] = DateTime.now();
-  }
-
-  void endOperation(String operationId, {Map<String, dynamic>? metadata}) {
-    final startTime = _operationStarts.remove(operationId);
-    if (startTime != null) {
-      final duration = DateTime.now().difference(startTime);
-      _logger.performanceLog(operationId, duration, metadata: metadata);
-    }
-  }
-
-  void logMemoryUsage(int bytesUsed) {
-    _logger.info(
-      'Memory usage: ${(bytesUsed / 1024 / 1024).toStringAsFixed(2)} MB',
-      context: const LogContext(module: LogModule.performance),
-    );
-  }
-
-  void logFrameRate(double fps) {
-    _logger.info(
-      'Frame rate: ${fps.toStringAsFixed(1)} FPS',
-      context: const LogContext(module: LogModule.performance),
-    );
   }
 }

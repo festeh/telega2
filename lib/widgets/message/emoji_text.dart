@@ -86,11 +86,13 @@ class EmojiText extends ConsumerWidget {
       spacing: 4,
       runSpacing: 4,
       children: emojis
-          .map((emoji) => TelegramEmojiWidget(
-                emoji: emoji,
-                size: largeSize,
-                animated: false,
-              ))
+          .map(
+            (emoji) => TelegramEmojiWidget(
+              emoji: emoji,
+              size: largeSize,
+              animated: false,
+            ),
+          )
           .toList(),
     );
   }
@@ -117,19 +119,18 @@ class EmojiText extends ConsumerWidget {
 
     for (final segment in segments) {
       if (segment.isEmoji) {
-        spans.add(WidgetSpan(
-          alignment: PlaceholderAlignment.middle,
-          child: TelegramEmojiWidget(
-            emoji: segment.text,
-            size: effectiveEmojiSize,
-            animated: false,
+        spans.add(
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: TelegramEmojiWidget(
+              emoji: segment.text,
+              size: effectiveEmojiSize,
+              animated: false,
+            ),
           ),
-        ));
+        );
       } else {
-        spans.add(TextSpan(
-          text: segment.text,
-          style: effectiveStyle,
-        ));
+        spans.add(TextSpan(text: segment.text, style: effectiveStyle));
       }
     }
 
@@ -139,72 +140,6 @@ class EmojiText extends ConsumerWidget {
         textAlign: textAlign,
         maxLines: maxLines,
       );
-    }
-
-    return Text.rich(
-      TextSpan(children: spans),
-      textAlign: textAlign,
-      maxLines: maxLines,
-      overflow: overflow,
-    );
-  }
-}
-
-/// A simpler version that doesn't use Riverpod (for non-async rendering)
-/// Uses native emoji fallback immediately without attempting to load custom assets
-class SimpleEmojiText extends StatelessWidget {
-  final String text;
-  final TextStyle? style;
-  final double? emojiSize;
-  final TextAlign textAlign;
-  final int? maxLines;
-  final TextOverflow overflow;
-
-  const SimpleEmojiText({
-    super.key,
-    required this.text,
-    this.style,
-    this.emojiSize,
-    this.textAlign = TextAlign.start,
-    this.maxLines,
-    this.overflow = TextOverflow.clip,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // For simple version, just render text normally
-    // Custom emoji rendering happens via TelegramEmojiWidget's fallback
-    if (!containsEmoji(text)) {
-      return Text(
-        text,
-        style: style,
-        textAlign: textAlign,
-        maxLines: maxLines,
-        overflow: overflow,
-      );
-    }
-
-    final effectiveStyle = style ?? DefaultTextStyle.of(context).style;
-    final effectiveEmojiSize = emojiSize ?? (effectiveStyle.fontSize ?? 14.0);
-
-    final segments = splitTextWithEmojis(text);
-    final spans = <InlineSpan>[];
-
-    for (final segment in segments) {
-      if (segment.isEmoji) {
-        spans.add(WidgetSpan(
-          alignment: PlaceholderAlignment.middle,
-          child: StaticEmojiWidget(
-            emoji: segment.text,
-            size: effectiveEmojiSize,
-          ),
-        ));
-      } else {
-        spans.add(TextSpan(
-          text: segment.text,
-          style: effectiveStyle,
-        ));
-      }
     }
 
     return Text.rich(

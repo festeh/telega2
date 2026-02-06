@@ -1,18 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/chat.dart';
 import '../chat/chat_list.dart';
 
-class LeftPane extends ConsumerStatefulWidget {
+class LeftPane extends StatelessWidget {
   final Function(Chat)? onChatSelected;
 
   const LeftPane({super.key, this.onChatSelected});
 
-  @override
-  ConsumerState<LeftPane> createState() => _LeftPaneState();
-}
-
-class _LeftPaneState extends ConsumerState<LeftPane> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -27,7 +21,7 @@ class _LeftPaneState extends ConsumerState<LeftPane> {
       child: Column(
         children: [
           _buildHeader(colorScheme),
-          Expanded(child: ChatList(onChatSelected: widget.onChatSelected)),
+          Expanded(child: ChatList(onChatSelected: onChatSelected)),
         ],
       ),
     );

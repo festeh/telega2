@@ -329,6 +329,7 @@ class TdlibAuthentication implements AuthenticationRepository {
     try {
       final sessionData = await _storage.getString('user_session');
       if (sessionData != null) {
+        _currentUser = UserSession.fromJson(jsonDecode(sessionData));
         _logger.logSessionLoad();
       }
     } catch (e) {

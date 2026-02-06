@@ -117,10 +117,19 @@ class _FullScreenImageViewer extends StatefulWidget {
 class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
   final TransformationController _transformationController =
       TransformationController();
+  late final FocusNode _focusNode;
   double _dragOffset = 0;
 
   @override
+  void initState() {
+    super.initState();
+    _focusNode = FocusNode();
+    _focusNode.requestFocus();
+  }
+
+  @override
   void dispose() {
+    _focusNode.dispose();
     _transformationController.dispose();
     super.dispose();
   }
@@ -134,7 +143,7 @@ class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: KeyboardListener(
-        focusNode: FocusNode()..requestFocus(),
+        focusNode: _focusNode,
         onKeyEvent: (event) {
           if (event is KeyDownEvent &&
               event.logicalKey == LogicalKeyboardKey.escape) {

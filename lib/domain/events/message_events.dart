@@ -98,7 +98,11 @@ class FileDownloadProgressEvent extends MessageEvent {
   final int fileId;
   final int downloadedSize;
   final int expectedSize;
-  FileDownloadProgressEvent(this.fileId, this.downloadedSize, this.expectedSize);
+  FileDownloadProgressEvent(
+    this.fileId,
+    this.downloadedSize,
+    this.expectedSize,
+  );
 
   double get progress => expectedSize > 0 ? downloadedSize / expectedSize : 0.0;
 }

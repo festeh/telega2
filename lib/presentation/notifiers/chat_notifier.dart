@@ -71,7 +71,7 @@ class ChatNotifier extends AsyncNotifier<ChatState> {
       case ChatPositionChangedEvent(:final chatId, :final isInMainList):
         _handleChatPositionChanged(chatId, isInMainList);
       case ChatOrderChangedEvent():
-        _resortChats();
+        _scheduleSortIfNeeded();
       case UserStatusUpdatedEvent():
         // Status is cached in TdlibTelegramClient; force UI refresh
         _triggerStateRefresh();
@@ -120,10 +120,6 @@ class ChatNotifier extends AsyncNotifier<ChatState> {
     }
 
     state = AsyncData(newState);
-    _scheduleSortIfNeeded();
-  }
-
-  void _resortChats() {
     _scheduleSortIfNeeded();
   }
 

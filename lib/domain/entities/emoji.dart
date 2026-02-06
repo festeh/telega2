@@ -104,23 +104,20 @@ class RecentEmoji {
   int useCount;
   DateTime lastUsed;
 
-  RecentEmoji({
-    required this.codepoint,
-    this.useCount = 1,
-    DateTime? lastUsed,
-  }) : lastUsed = lastUsed ?? DateTime.now();
+  RecentEmoji({required this.codepoint, this.useCount = 1, DateTime? lastUsed})
+    : lastUsed = lastUsed ?? DateTime.now();
 
   Map<String, dynamic> toJson() => {
-        'codepoint': codepoint,
-        'useCount': useCount,
-        'lastUsed': lastUsed.toIso8601String(),
-      };
+    'codepoint': codepoint,
+    'useCount': useCount,
+    'lastUsed': lastUsed.toIso8601String(),
+  };
 
   factory RecentEmoji.fromJson(Map<String, dynamic> json) => RecentEmoji(
-        codepoint: json['codepoint'] as String,
-        useCount: json['useCount'] as int? ?? 1,
-        lastUsed: json['lastUsed'] != null
-            ? DateTime.parse(json['lastUsed'] as String)
-            : DateTime.now(),
-      );
+    codepoint: json['codepoint'] as String,
+    useCount: json['useCount'] as int? ?? 1,
+    lastUsed: json['lastUsed'] != null
+        ? DateTime.parse(json['lastUsed'] as String)
+        : DateTime.now(),
+  );
 }

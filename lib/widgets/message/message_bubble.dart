@@ -148,8 +148,7 @@ class MessageBubble extends ConsumerWidget {
           children: [
             if (message.replyToMessageId != null)
               _buildReplyPreview(context, ref),
-            if (message.forwardedFrom != null)
-              _buildForwardedFrom(context),
+            if (message.forwardedFrom != null) _buildForwardedFrom(context),
             _buildMessageContent(context),
           ],
         ),

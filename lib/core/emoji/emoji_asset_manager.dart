@@ -5,10 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:telega2/core/emoji/emoji_cache.dart';
 import 'package:telega2/core/emoji/emoji_data.dart';
 import 'package:telega2/domain/entities/emoji.dart';
-import 'package:telega2/domain/repositories/telegram_client_repository.dart';
-
-/// Function type for getting animated emoji from TDLib
-typedef GetAnimatedEmojiFunc = Future<String?> Function(String emoji);
 
 /// Manages emoji asset loading and caching
 /// Uses TDLib to download animated emoji assets from Telegram servers
@@ -25,16 +21,6 @@ class EmojiAssetManager {
   EmojiAssetManager({EmojiCache? cache, EmojiData? emojiData})
     : _cache = cache ?? EmojiCache(),
       _emojiData = emojiData ?? EmojiData();
-
-  /// Set the TDLib client for downloading animated emojis
-  void setTelegramClient(TelegramClientRepository client) {
-    // TODO: Use client.getAnimatedEmoji for downloading animated emojis
-  }
-
-  /// Set a custom function for getting animated emojis (for testing)
-  void setAnimatedEmojiLoader(GetAnimatedEmojiFunc loader) {
-    // TODO: Store loader for animated emoji support
-  }
 
   /// Initialize the asset manager
   Future<void> initialize() async {

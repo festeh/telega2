@@ -19,8 +19,7 @@ class ChatListItem extends StatefulWidget {
   State<ChatListItem> createState() => _ChatListItemState();
 }
 
-class _ChatListItemState extends State<ChatListItem>
-    with SingleTickerProviderStateMixin {
+class _ChatListItemState extends State<ChatListItem> {
   bool _isHovered = false;
 
   @override
@@ -146,10 +145,9 @@ class _ChatListItemState extends State<ChatListItem>
     final words = title.split(' ').where((word) => word.isNotEmpty).toList();
     if (words.length == 1) {
       return words[0][0].toUpperCase();
-    } else if (words.length >= 2) {
+    } else {
       return '${words[0][0]}${words[1][0]}'.toUpperCase();
     }
-    return title[0].toUpperCase();
   }
 
   Widget _buildTimestamp(ColorScheme colorScheme) {

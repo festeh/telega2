@@ -281,11 +281,3 @@ final replyCacheVersionProvider =
     NotifierProvider<ReplyCacheVersionNotifier, int>(
       ReplyCacheVersionNotifier.new,
     );
-
-// Legacy provider names for backward compatibility during migration (optional)
-// These can be removed once all widgets are updated
-final isAuthenticatedProvider = Provider<bool>((ref) {
-  return ref.watch(
-    authProvider.select((state) => state.value?.isAuthenticated ?? false),
-  );
-});

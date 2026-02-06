@@ -41,15 +41,6 @@ final RegExp emojiRegex = RegExp(
   unicode: true,
 );
 
-/// Simplified regex for common emojis (faster but less complete)
-final RegExp simpleEmojiRegex = RegExp(
-  r'[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]'
-  r'(?:[\u{1F3FB}-\u{1F3FF}])?'
-  r'(?:\u{FE0F})?'
-  r'(?:\u{200D}[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}])*',
-  unicode: true,
-);
-
 /// Check if a string contains any emoji characters
 bool containsEmoji(String text) {
   return emojiRegex.hasMatch(text);

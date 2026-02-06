@@ -46,10 +46,7 @@ class _CircularProgressPainter extends CustomPainter {
   final double progress;
   final bool hasError;
 
-  _CircularProgressPainter({
-    required this.progress,
-    required this.hasError,
-  });
+  _CircularProgressPainter({required this.progress, required this.hasError});
 
   @override
   void paint(Canvas canvas, Size size) {

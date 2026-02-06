@@ -15,10 +15,7 @@ class FileDownloadState {
     this.status = DownloadStatus.downloading,
   });
 
-  FileDownloadState copyWith({
-    double? progress,
-    DownloadStatus? status,
-  }) {
+  FileDownloadState copyWith({double? progress, DownloadStatus? status}) {
     return FileDownloadState(
       progress: progress ?? this.progress,
       status: status ?? this.status,
@@ -102,8 +99,8 @@ class DownloadProgressNotifier extends Notifier<DownloadProgressState> {
 
 final downloadProgressProvider =
     NotifierProvider<DownloadProgressNotifier, DownloadProgressState>(
-  () => DownloadProgressNotifier(),
-);
+      () => DownloadProgressNotifier(),
+    );
 
 // Extension methods for convenient access
 extension DownloadProgressX on WidgetRef {

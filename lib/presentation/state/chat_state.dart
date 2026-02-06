@@ -19,9 +19,6 @@ class ChatState {
   factory ChatState.initial() =>
       const ChatState(isLoading: true, isInitialized: false);
 
-  factory ChatState.error(String message) =>
-      ChatState(errorMessage: message, isLoading: false, isInitialized: false);
-
   factory ChatState.loaded(List<Chat> chats) =>
       ChatState(chats: chats, isLoading: false, isInitialized: true);
 
@@ -30,13 +27,16 @@ class ChatState {
     List<Chat>? chats,
     bool? isLoading,
     String? errorMessage,
+    bool clearErrorMessage = false,
     bool? isInitialized,
     int? version,
   }) {
     return ChatState(
       chats: chats ?? this.chats,
       isLoading: isLoading ?? this.isLoading,
-      errorMessage: errorMessage,
+      errorMessage: clearErrorMessage
+          ? null
+          : (errorMessage ?? this.errorMessage),
       isInitialized: isInitialized ?? this.isInitialized,
       version: version ?? _version,
     );
@@ -47,7 +47,7 @@ class ChatState {
 
   // Helper methods
   ChatState setLoading(bool loading) => copyWith(isLoading: loading);
-  ChatState clearError() => copyWith(errorMessage: null);
+  ChatState clearError() => copyWith(clearErrorMessage: true);
   ChatState setError(String error) =>
       copyWith(errorMessage: error, isLoading: false);
 
@@ -72,11 +72,6 @@ class ChatState {
     return copyWith(chats: newChats);
   }
 
-  ChatState removeChat(int chatId) {
-    final newChats = chats.where((chat) => chat.id != chatId).toList();
-    return copyWith(chats: newChats);
-  }
-
   // Sort chats by last activity (most recent first)
   ChatState sortByLastActivity() {
     final sortedChats = List<Chat>.from(chats)
@@ -97,7 +92,7 @@ class ChatState {
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is ChatState &&
-        other.chats.length == chats.length &&
+        identical(other.chats, chats) &&
         other.isLoading == isLoading &&
         other.errorMessage == errorMessage &&
         other.isInitialized == isInitialized &&
@@ -107,7 +102,7 @@ class ChatState {
   @override
   int get hashCode {
     return Object.hash(
-      chats.length,
+      identityHashCode(chats),
       isLoading,
       errorMessage,
       isInitialized,

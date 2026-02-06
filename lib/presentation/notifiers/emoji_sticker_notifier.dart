@@ -1,15 +1,16 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/repositories/telegram_client_repository.dart';
 import '../../domain/entities/sticker.dart';
 import '../../data/repositories/tdlib_telegram_client.dart';
+import '../../core/logging/app_logger.dart';
 import '../state/emoji_sticker_state.dart';
 import '../providers/telegram_client_provider.dart';
 
 class EmojiStickerNotifier extends Notifier<EmojiStickerState> {
   TelegramClientRepository get _client => ref.read(telegramClientProvider);
   StreamSubscription? _downloadSubscription;
+  final AppLogger _logger = AppLogger.instance;
 
   @override
   EmojiStickerState build() {
@@ -32,24 +33,20 @@ class EmojiStickerNotifier extends Notifier<EmojiStickerState> {
     }
   }
 
-  void togglePicker() {
-    state = state.copyWith(isPickerVisible: !state.isPickerVisible);
-
-    // Load sticker sets when picker opens for the first time
-    if (state.isPickerVisible &&
-        state.installedStickerSets.isEmpty &&
-        !state.isLoadingStickerSets) {
+  void _ensureStickerSetsLoaded() {
+    if (state.installedStickerSets.isEmpty && !state.isLoadingStickerSets) {
       loadInstalledStickerSets();
     }
   }
 
+  void togglePicker() {
+    state = state.copyWith(isPickerVisible: !state.isPickerVisible);
+    if (state.isPickerVisible) _ensureStickerSetsLoaded();
+  }
+
   void showPicker() {
     state = state.copyWith(isPickerVisible: true);
-
-    // Load sticker sets when picker opens for the first time
-    if (state.installedStickerSets.isEmpty && !state.isLoadingStickerSets) {
-      loadInstalledStickerSets();
-    }
+    _ensureStickerSetsLoaded();
   }
 
   void hidePicker() {
@@ -58,13 +55,7 @@ class EmojiStickerNotifier extends Notifier<EmojiStickerState> {
 
   void selectTab(PickerTab tab) {
     state = state.copyWith(selectedTab: tab);
-
-    // Load sticker sets when switching to sticker tab
-    if (tab == PickerTab.sticker &&
-        state.installedStickerSets.isEmpty &&
-        !state.isLoadingStickerSets) {
-      loadInstalledStickerSets();
-    }
+    if (tab == PickerTab.sticker) _ensureStickerSetsLoaded();
   }
 
   void setKeyboardHeight(double height) {
@@ -76,35 +67,23 @@ class EmojiStickerNotifier extends Notifier<EmojiStickerState> {
   Future<void> loadInstalledStickerSets() async {
     if (state.isLoadingStickerSets) return;
 
-    debugPrint('[EmojiStickerNotifier] loadInstalledStickerSets called');
+    _logger.debug('Loading installed sticker sets');
     state = state.copyWith(isLoadingStickerSets: true, clearError: true);
 
     try {
-      debugPrint(
-        '[EmojiStickerNotifier] Calling _client.getInstalledStickerSets()...',
-      );
       final stickerSets = await _client.getInstalledStickerSets();
-      debugPrint(
-        '[EmojiStickerNotifier] Got ${stickerSets.length} sticker sets',
-      );
+      _logger.debug('Got ${stickerSets.length} sticker sets');
 
-      // Also load recent stickers
-      debugPrint(
-        '[EmojiStickerNotifier] Calling _client.getRecentStickers()...',
-      );
       final recentStickers = await _client.getRecentStickers();
-      debugPrint(
-        '[EmojiStickerNotifier] Got ${recentStickers.length} recent stickers',
-      );
+      _logger.debug('Got ${recentStickers.length} recent stickers');
 
       state = state.copyWith(
         installedStickerSets: stickerSets,
         recentStickers: recentStickers,
         isLoadingStickerSets: false,
       );
-      debugPrint('[EmojiStickerNotifier] State updated with sticker sets');
     } catch (e) {
-      debugPrint('[EmojiStickerNotifier] Error loading sticker sets: $e');
+      _logger.error('Error loading sticker sets', error: e);
       state = state.copyWith(
         isLoadingStickerSets: false,
         errorMessage: 'Failed to load sticker sets: $e',
