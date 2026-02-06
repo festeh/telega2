@@ -373,7 +373,8 @@ class Message {
         case 'messageVoiceNote':
           return '🎤 Voice message';
         case 'messageSticker':
-          return '🎭 Sticker';
+          final emoji = contentMap['sticker']?['emoji'] as String?;
+          return emoji != null ? '$emoji Sticker' : '🎭 Sticker';
         case 'messageAnimation':
           return '🎞️ GIF';
         case 'messageAnimatedEmoji':
