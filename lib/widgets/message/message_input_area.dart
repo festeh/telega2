@@ -1,7 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:photo_manager/photo_manager.dart';
 import '../../domain/entities/chat.dart';
+import '../../domain/entities/media_item.dart';
 import '../../presentation/providers/app_providers.dart';
 import '../emoji_sticker/emoji_sticker_picker.dart';
 import 'media_picker/media_picker_panel.dart';
@@ -374,15 +377,36 @@ class _MessageInputAreaState extends ConsumerState<MessageInputArea>
     );
   }
 
+  static const _imageExtensions = {'.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp'};
+  static const _videoExtensions = {'.mp4', '.mov', '.avi', '.mkv', '.webm'};
+
   Future<void> _sendDocument(String filePath) async {
     final chatId = widget.chat.id;
     final notifier = ref.read(messageProvider.notifier);
     final caption = _textController.text.trim();
-    await notifier.sendDocument(
-      chatId,
-      filePath,
-      caption: caption.isNotEmpty ? caption : null,
-    );
+    final ext = filePath.toLowerCase().split('.').last;
+    final dotExt = '.$ext';
+
+    if (_imageExtensions.contains(dotExt)) {
+      await notifier.sendPhoto(
+        chatId,
+        MediaItem(path: filePath),
+        caption: caption.isNotEmpty ? caption : null,
+      );
+    } else if (_videoExtensions.contains(dotExt)) {
+      await notifier.sendVideo(
+        chatId,
+        MediaItem(path: filePath, isVideo: true),
+        caption: caption.isNotEmpty ? caption : null,
+      );
+    } else {
+      await notifier.sendDocument(
+        chatId,
+        filePath,
+        caption: caption.isNotEmpty ? caption : null,
+      );
+    }
+
     if (caption.isNotEmpty) {
       _textController.clear();
       setState(() => _isMultiline = false);
@@ -400,28 +424,33 @@ class _MessageInputAreaState extends ConsumerState<MessageInputArea>
     final effectiveCaption = caption ?? _textController.text.trim();
     final hasCaption = effectiveCaption.isNotEmpty;
 
-    // Resolve file paths and determine types
-    final resolvedItems = <(String path, bool isVideo)>[];
+    // Resolve file paths, resize photos if needed, and determine types
+    final resolvedItems = <MediaItem>[];
     for (final asset in items) {
-      final file = await asset.file;
-      if (file == null) continue;
-      resolvedItems.add((file.path, asset.type == AssetType.video));
+      if (asset.type == AssetType.video) {
+        final file = await asset.file;
+        if (file == null) continue;
+        resolvedItems.add(MediaItem(path: file.path, isVideo: true));
+      } else {
+        final item = await _resolvePhotoAsset(asset);
+        if (item != null) resolvedItems.add(item);
+      }
     }
 
     if (resolvedItems.isEmpty) return;
 
     if (resolvedItems.length == 1) {
-      final (path, isVideo) = resolvedItems.first;
-      if (isVideo) {
+      final item = resolvedItems.first;
+      if (item.isVideo) {
         await notifier.sendVideo(
           chatId,
-          path,
+          item,
           caption: hasCaption ? effectiveCaption : null,
         );
       } else {
         await notifier.sendPhoto(
           chatId,
-          path,
+          item,
           caption: hasCaption ? effectiveCaption : null,
         );
       }
@@ -438,6 +467,48 @@ class _MessageInputAreaState extends ConsumerState<MessageInputArea>
       _textController.clear();
       setState(() => _isMultiline = false);
     }
+  }
+
+  /// Max pixels per side when resizing photos for sending (matches tdesktop).
+  static const _maxPhotoSide = 2560;
+
+  /// TDLib rejects photos where width + height > 10000.
+  static bool _needsResize(int w, int h) => w + h > 10000;
+
+  /// Returns scaled (width, height) fitting within [_maxPhotoSide] per side.
+  static (int, int) _scaledDimensions(int w, int h) {
+    if (w <= _maxPhotoSide && h <= _maxPhotoSide) return (w, h);
+    final scale = _maxPhotoSide / (w > h ? w : h);
+    return ((w * scale).round(), (h * scale).round());
+  }
+
+  /// Resolve a photo [AssetEntity] to a [MediaItem], resizing if too large.
+  Future<MediaItem?> _resolvePhotoAsset(AssetEntity asset) async {
+    final w = asset.width;
+    final h = asset.height;
+
+    if (!_needsResize(w, h)) {
+      final file = await asset.file;
+      if (file == null) return null;
+      return MediaItem(path: file.path, width: w, height: h);
+    }
+
+    // Resize via photo_manager's platform-native scaling
+    final (scaledW, scaledH) = _scaledDimensions(w, h);
+    final bytes = await asset.thumbnailDataWithSize(
+      ThumbnailSize(scaledW, scaledH),
+      format: ThumbnailFormat.jpeg,
+      quality: 87,
+    );
+    if (bytes == null) return null;
+
+    // Write resized JPEG to temp file
+    final dir = await getTemporaryDirectory();
+    final file = File(
+      '${dir.path}/tg_send_${asset.id.hashCode}_${scaledW}x$scaledH.jpg',
+    );
+    await file.writeAsBytes(bytes);
+    return MediaItem(path: file.path, width: scaledW, height: scaledH);
   }
 
   void _showEmojiPicker() {

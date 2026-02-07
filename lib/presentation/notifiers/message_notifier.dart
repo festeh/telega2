@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/repositories/telegram_client_repository.dart';
 import '../../domain/entities/chat.dart';
+import '../../domain/entities/media_item.dart';
 import '../../domain/events/message_events.dart';
 import '../state/message_state.dart';
 import '../../core/logging/app_logger.dart';
@@ -492,7 +493,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
     }
   }
 
-  Future<void> sendPhoto(int chatId, String filePath, {String? caption}) async {
+  Future<void> sendPhoto(int chatId, MediaItem item, {String? caption}) async {
     try {
       final currentState = _currentState;
       final replyToMessageId = currentState.replyingToMessage?.id;
@@ -500,7 +501,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
 
       await _client.sendPhoto(
         chatId,
-        filePath,
+        item,
         caption: caption,
         replyToMessageId: replyToMessageId,
       );
@@ -513,7 +514,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
     }
   }
 
-  Future<void> sendVideo(int chatId, String filePath, {String? caption}) async {
+  Future<void> sendVideo(int chatId, MediaItem item, {String? caption}) async {
     try {
       final currentState = _currentState;
       final replyToMessageId = currentState.replyingToMessage?.id;
@@ -521,7 +522,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
 
       await _client.sendVideo(
         chatId,
-        filePath,
+        item,
         caption: caption,
         replyToMessageId: replyToMessageId,
       );
@@ -561,7 +562,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
 
   Future<void> sendAlbum(
     int chatId,
-    List<(String path, bool isVideo)> items, {
+    List<MediaItem> items, {
     String? caption,
   }) async {
     try {
@@ -675,7 +676,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
   // State management helpers
 
   void _setError(String errorMessage) {
-    state = AsyncData(_currentState.setError(errorMessage));
+    state = AsyncData(_currentState.setSending(false).setError(errorMessage));
   }
 
   void clearError() {

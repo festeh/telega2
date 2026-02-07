@@ -8,6 +8,7 @@ import '../../domain/repositories/telegram_client_repository.dart';
 import '../../domain/entities/auth_state.dart';
 import '../../domain/entities/user_session.dart';
 import '../../domain/entities/chat.dart';
+import '../../domain/entities/media_item.dart';
 import '../../domain/entities/sticker.dart';
 import '../../domain/events/chat_events.dart';
 import '../../domain/events/message_events.dart';
@@ -917,19 +918,25 @@ class TdlibTelegramClient implements TelegramClientRepository {
     _client!.send(requestJson);
 
     // Wait for response with timeout
-    try {
-      final response = await completer.future.timeout(
-        timeout ?? const Duration(seconds: 5),
-        onTimeout: () {
-          _pendingRequests.remove(requestId);
-          return null;
-        },
-      );
-      return response;
-    } catch (e) {
-      _pendingRequests.remove(requestId);
-      return null;
+    final response = await completer.future.timeout(
+      timeout ?? const Duration(seconds: 5),
+      onTimeout: () {
+        _pendingRequests.remove(requestId);
+        throw TimeoutException(
+          'TDLib request ${request['@type']} timed out',
+          timeout ?? const Duration(seconds: 5),
+        );
+      },
+    );
+
+    // Check for TDLib error responses
+    if (response != null && response['@type'] == 'error') {
+      final code = response['code'] ?? 0;
+      final message = response['message'] ?? 'Unknown error';
+      throw Exception('TDLib error $code: $message');
     }
+
+    return response;
   }
 
   @override
@@ -1352,7 +1359,7 @@ class TdlibTelegramClient implements TelegramClientRepository {
   @override
   Future<void> sendPhoto(
     int chatId,
-    String filePath, {
+    MediaItem item, {
     String? caption,
     int? replyToMessageId,
   }) async {
@@ -1367,7 +1374,7 @@ class TdlibTelegramClient implements TelegramClientRepository {
           },
         'input_message_content': {
           '@type': 'inputMessagePhoto',
-          'photo': {'@type': 'inputFileLocal', 'path': filePath},
+          'photo': {'@type': 'inputFileLocal', 'path': item.path},
           if (caption != null && caption.isNotEmpty)
             'caption': {'@type': 'formattedText', 'text': caption},
         },
@@ -1384,7 +1391,7 @@ class TdlibTelegramClient implements TelegramClientRepository {
   @override
   Future<void> sendVideo(
     int chatId,
-    String filePath, {
+    MediaItem item, {
     String? caption,
     int? replyToMessageId,
   }) async {
@@ -1399,7 +1406,7 @@ class TdlibTelegramClient implements TelegramClientRepository {
           },
         'input_message_content': {
           '@type': 'inputMessageVideo',
-          'video': {'@type': 'inputFileLocal', 'path': filePath},
+          'video': {'@type': 'inputFileLocal', 'path': item.path},
           if (caption != null && caption.isNotEmpty)
             'caption': {'@type': 'formattedText', 'text': caption},
         },
@@ -1448,26 +1455,26 @@ class TdlibTelegramClient implements TelegramClientRepository {
   @override
   Future<void> sendMessageAlbum(
     int chatId,
-    List<(String path, bool isVideo)> items, {
+    List<MediaItem> items, {
     String? caption,
     int? replyToMessageId,
   }) async {
     try {
       final inputContents = <Map<String, dynamic>>[];
       for (var i = 0; i < items.length; i++) {
-        final (path, isVideo) = items[i];
+        final item = items[i];
         final isFirst = i == 0;
-        if (isVideo) {
+        if (item.isVideo) {
           inputContents.add({
             '@type': 'inputMessageVideo',
-            'video': {'@type': 'inputFileLocal', 'path': path},
+            'video': {'@type': 'inputFileLocal', 'path': item.path},
             if (isFirst && caption != null && caption.isNotEmpty)
               'caption': {'@type': 'formattedText', 'text': caption},
           });
         } else {
           inputContents.add({
             '@type': 'inputMessagePhoto',
-            'photo': {'@type': 'inputFileLocal', 'path': path},
+            'photo': {'@type': 'inputFileLocal', 'path': item.path},
             if (isFirst && caption != null && caption.isNotEmpty)
               'caption': {'@type': 'formattedText', 'text': caption},
           });

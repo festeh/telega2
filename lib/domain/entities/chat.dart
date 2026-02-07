@@ -433,16 +433,18 @@ class Message {
       final sizes = photo['sizes'] as List?;
       if (sizes == null || sizes.isEmpty) return null;
 
-      // Find the largest size (typically 'm' or 'x' type)
+      // Pick best size by type preference (matches tdesktop order).
+      // 'i' (input) is last resort — used for pending sent photos.
+      const typePreference = 'ydxcwmbsai';
       Map<String, dynamic>? bestSize;
-      int bestArea = 0;
+      int bestRank = typePreference.length + 1;
       for (final size in sizes) {
         if (size is Map<String, dynamic>) {
-          final w = size['width'] as int? ?? 0;
-          final h = size['height'] as int? ?? 0;
-          final area = w * h;
-          if (area > bestArea) {
-            bestArea = area;
+          final type = size['type'] as String? ?? '';
+          final rank = type.isEmpty ? bestRank : typePreference.indexOf(type);
+          final effectiveRank = rank < 0 ? typePreference.length : rank;
+          if (effectiveRank < bestRank) {
+            bestRank = effectiveRank;
             bestSize = size;
           }
         }

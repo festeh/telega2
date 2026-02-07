@@ -2,6 +2,7 @@ import 'dart:async';
 import '../entities/auth_state.dart';
 import '../entities/user_session.dart';
 import '../entities/chat.dart';
+import '../entities/media_item.dart';
 import '../entities/sticker.dart';
 import '../events/chat_events.dart';
 import '../events/message_events.dart';
@@ -64,13 +65,13 @@ abstract class TelegramClientRepository {
   });
   Future<void> sendPhoto(
     int chatId,
-    String filePath, {
+    MediaItem item, {
     String? caption,
     int? replyToMessageId,
   });
   Future<void> sendVideo(
     int chatId,
-    String filePath, {
+    MediaItem item, {
     String? caption,
     int? replyToMessageId,
   });
@@ -82,7 +83,7 @@ abstract class TelegramClientRepository {
   });
   Future<void> sendMessageAlbum(
     int chatId,
-    List<(String path, bool isVideo)> items, {
+    List<MediaItem> items, {
     String? caption,
     int? replyToMessageId,
   });
