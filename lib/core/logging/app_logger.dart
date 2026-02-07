@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 
 import 'log_level.dart';
+import 'error_log_buffer.dart';
 import 'formatters/console_formatter.dart';
 
 class AppLogger {
@@ -104,6 +105,19 @@ class AppLogger {
         : message;
 
     _logger.log(level, logMessage, error: error, stackTrace: stackTrace);
+
+    // Capture warnings, errors, and fatals into the in-app error buffer
+    if (level.index >= Level.warning.index) {
+      final messageStr = message is Map ? (message['message'] ?? message.toString()).toString() : message.toString();
+      ErrorLogBuffer.instance.add(ErrorLogEntry(
+        timestamp: DateTime.now(),
+        level: level,
+        message: messageStr,
+        module: effectiveContext?.module.name,
+        error: error?.toString(),
+        stackTrace: stackTrace?.toString(),
+      ));
+    }
   }
 
   void trace(dynamic message, {LogContext? context}) {

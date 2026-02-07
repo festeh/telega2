@@ -9,6 +9,7 @@ import '../state/message_state.dart';
 import '../state/emoji_sticker_state.dart';
 import '../../domain/entities/chat.dart';
 import '../../domain/entities/sticker.dart';
+import '../../core/logging/error_log_buffer.dart';
 
 // Single source of truth for all authentication state
 final authProvider = AsyncNotifierProvider<AuthNotifier, UnifiedAuthState>(
@@ -30,6 +31,20 @@ final emojiStickerProvider =
     NotifierProvider<EmojiStickerNotifier, EmojiStickerState>(
       () => EmojiStickerNotifier(),
     );
+
+// Error log buffer for in-app error viewer.
+// Bumps an int version to trigger rebuilds; access ErrorLogBuffer.instance for data.
+class ErrorLogNotifier extends Notifier<int> {
+  @override
+  int build() {
+    ErrorLogBuffer.instance.onChanged = () => state++;
+    return 0;
+  }
+}
+
+final errorLogProvider = NotifierProvider<ErrorLogNotifier, int>(
+  ErrorLogNotifier.new,
+);
 
 // Clean extension methods for convenient UI access
 extension AuthX on WidgetRef {
