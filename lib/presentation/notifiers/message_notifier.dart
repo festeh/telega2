@@ -625,6 +625,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
 
     try {
       await _client.markAsRead(chatId, messageId);
+      _client.readAllChatReactions(chatId);
       _logger.debug('Message marked as read in chat $chatId: $messageId');
 
       // Update the tracking state

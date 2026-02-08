@@ -275,6 +275,8 @@ class TdlibTelegramClient implements TelegramClientRepository {
       _handleMessageSendFailedUpdate(update);
     } else if (type == TdlibUpdateTypes.messageInteractionInfo) {
       _handleMessageInteractionInfoUpdate(update);
+    } else if (type == TdlibUpdateTypes.chatUnreadReactionCount) {
+      _handleChatUnreadReactionCountUpdate(update);
     } else if (type == 'stickerSets' || type == 'StickerSets') {
       _logger.logResponse({
         '@type': 'DEBUG_stickerSets_received',
@@ -1538,6 +1540,21 @@ class TdlibTelegramClient implements TelegramClientRepository {
   }
 
   @override
+  Future<void> readAllChatReactions(int chatId) async {
+    try {
+      await _sendRequest({
+        '@type': 'readAllChatReactions',
+        'chat_id': chatId,
+      });
+    } catch (e) {
+      _logger.logError(
+        'Failed to read all chat reactions in chat $chatId',
+        error: e,
+      );
+    }
+  }
+
+  @override
   Future<bool> deleteMessage(int chatId, int messageId) async {
     try {
       await _sendRequest({
@@ -2056,15 +2073,23 @@ class TdlibTelegramClient implements TelegramClientRepository {
         reactions = _processCustomEmojiReactions(chatId, messageId, reactions);
       }
 
-      // Update cached message if exists
+      // Update cached message if exists, and detect new reactions
       final cachedMessages = _messages[chatId];
       if (cachedMessages != null) {
         final idx = cachedMessages.indexWhere((m) => m.id == messageId);
         if (idx != -1) {
+          final oldReactions = cachedMessages[idx].reactions;
           final updatedMessage = cachedMessages[idx].copyWith(
             reactions: reactions,
           );
           cachedMessages[idx] = updatedMessage;
+
+          // Detect new reactions for private/basicGroup chats
+          _emitUnreadReactionIfNew(
+            chatId,
+            oldReactions,
+            reactions,
+          );
         }
       }
 
@@ -2083,6 +2108,54 @@ class TdlibTelegramClient implements TelegramClientRepository {
         'Error handling message interaction info update',
         error: e,
       );
+    }
+  }
+
+  /// Detect if any reaction count increased and emit a chat event for the badge.
+  /// Only emits for private and basic group chats.
+  void _emitUnreadReactionIfNew(
+    int chatId,
+    List<MessageReaction>? oldReactions,
+    List<MessageReaction>? newReactions,
+  ) {
+    if (newReactions == null || newReactions.isEmpty) return;
+
+    final chat = _chats[chatId];
+    if (chat == null) return;
+    if (chat.type != ChatType.private && chat.type != ChatType.basicGroup) {
+      return;
+    }
+
+    // Build map of old reaction counts by emoji
+    final oldCounts = <String, int>{};
+    if (oldReactions != null) {
+      for (final r in oldReactions) {
+        final key = r.emoji ?? 'custom:${r.customEmojiId}';
+        oldCounts[key] = r.count;
+      }
+    }
+
+    // Find first reaction whose count increased
+    for (final r in newReactions) {
+      final key = r.emoji ?? 'custom:${r.customEmojiId}';
+      final oldCount = oldCounts[key] ?? 0;
+      if (r.count > oldCount) {
+        // Use the emoji, or placeholder for custom emoji
+        final emoji = r.type == ReactionType.customEmoji ? '🫧' : r.emoji;
+        _chatEventController.add(ChatUnreadReactionEvent(chatId, emoji));
+        return;
+      }
+    }
+  }
+
+  /// Handle updateChatUnreadReactionCount from TDLib (e.g. after readAllChatReactions).
+  void _handleChatUnreadReactionCountUpdate(Map<String, dynamic> update) {
+    final chatId = update['chat_id'] as int?;
+    final count = update['unread_reaction_count'] as int?;
+    if (chatId == null || count == null) return;
+
+    if (count == 0) {
+      _chatEventController.add(ChatUnreadReactionEvent(chatId, null));
     }
   }
 

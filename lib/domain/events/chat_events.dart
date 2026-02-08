@@ -49,6 +49,13 @@ class ChatPositionChangedEvent extends ChatEvent {
 /// Emitted when chat order changes and list should be re-sorted.
 class ChatOrderChangedEvent extends ChatEvent {}
 
+/// Emitted when a chat has a new unread reaction.
+class ChatUnreadReactionEvent extends ChatEvent {
+  final int chatId;
+  final String? emoji; // null = clear the badge
+  ChatUnreadReactionEvent(this.chatId, this.emoji);
+}
+
 /// Emitted when a user's online status changes.
 class UserStatusUpdatedEvent extends ChatEvent {
   final int userId;

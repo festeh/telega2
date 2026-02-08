@@ -68,6 +68,11 @@ class ChatNotifier extends AsyncNotifier<ChatState> {
           chatId,
           (chat) => chat.copyWith(unreadCount: unreadCount),
         );
+      case ChatUnreadReactionEvent(:final chatId, :final emoji):
+        _updateChatProperty(
+          chatId,
+          (chat) => chat.copyWith(unreadReactionEmoji: () => emoji),
+        );
       case ChatPositionChangedEvent(:final chatId, :final isInMainList):
         _handleChatPositionChanged(chatId, isInMainList);
       case ChatOrderChangedEvent():

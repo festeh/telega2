@@ -72,6 +72,7 @@ class _ChatListItemState extends State<ChatListItem> {
                         children: [
                           Expanded(child: _buildLastMessage(colorScheme)),
                           const SizedBox(width: 8),
+                          _buildReactionBadge(colorScheme),
                           _buildUnreadBadge(colorScheme),
                         ],
                       ),
@@ -233,6 +234,28 @@ class _ChatListItemState extends State<ChatListItem> {
       case MessageType.text:
         return 'Message';
     }
+  }
+
+  Widget _buildReactionBadge(ColorScheme colorScheme) {
+    final emoji = widget.chat.unreadReactionEmoji;
+    if (emoji == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 4),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        decoration: BoxDecoration(
+          color: widget.isSelected
+              ? colorScheme.onPrimary.withValues(alpha: 0.2)
+              : colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          emoji,
+          style: const TextStyle(fontSize: 14),
+        ),
+      ),
+    );
   }
 
   Widget _buildUnreadBadge(ColorScheme colorScheme) {

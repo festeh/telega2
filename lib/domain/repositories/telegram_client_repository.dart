@@ -89,6 +89,7 @@ abstract class TelegramClientRepository {
   });
   Future<void> resendMessages(int chatId, List<int> messageIds);
   Future<void> markAsRead(int chatId, int messageId);
+  Future<void> readAllChatReactions(int chatId);
   Future<bool> deleteMessage(int chatId, int messageId);
   Future<Message?> editMessage(int chatId, int messageId, String newText);
   Future<void> forwardMessages(

@@ -152,6 +152,7 @@ class Chat {
   final int totalCount;
   final bool isInMainList;
   final bool canSendMessages;
+  final String? unreadReactionEmoji;
 
   const Chat({
     required this.id,
@@ -167,6 +168,7 @@ class Chat {
     this.totalCount = 0,
     this.isInMainList = true,
     this.canSendMessages = true,
+    this.unreadReactionEmoji,
   });
 
   factory Chat.fromJson(Map<String, dynamic> json) {
@@ -268,6 +270,7 @@ class Chat {
     int? totalCount,
     bool? isInMainList,
     bool? canSendMessages,
+    String? Function()? unreadReactionEmoji,
   }) {
     return Chat(
       id: id ?? this.id,
@@ -283,6 +286,9 @@ class Chat {
       totalCount: totalCount ?? this.totalCount,
       isInMainList: isInMainList ?? this.isInMainList,
       canSendMessages: canSendMessages ?? this.canSendMessages,
+      unreadReactionEmoji: unreadReactionEmoji != null
+          ? unreadReactionEmoji()
+          : this.unreadReactionEmoji,
     );
   }
 
