@@ -2126,20 +2126,25 @@ class TdlibTelegramClient implements TelegramClientRepository {
       return;
     }
 
-    // Build map of old reaction counts by emoji
-    final oldCounts = <String, int>{};
+    // Build map of old reaction state by emoji
+    final oldState = <String, ({int count, bool isChosen})>{};
     if (oldReactions != null) {
       for (final r in oldReactions) {
         final key = r.emoji ?? 'custom:${r.customEmojiId}';
-        oldCounts[key] = r.count;
+        oldState[key] = (count: r.count, isChosen: r.isChosen);
       }
     }
 
-    // Find first reaction whose count increased
+    // Find first reaction whose count increased from someone else
     for (final r in newReactions) {
       final key = r.emoji ?? 'custom:${r.customEmojiId}';
-      final oldCount = oldCounts[key] ?? 0;
+      final old = oldState[key];
+      final oldCount = old?.count ?? 0;
       if (r.count > oldCount) {
+        // Skip if this is our own reaction (isChosen flipped to true)
+        final wasChosen = old?.isChosen ?? false;
+        if (r.isChosen && !wasChosen) continue;
+
         // Use the emoji, or placeholder for custom emoji
         final emoji = r.type == ReactionType.customEmoji ? '🫧' : r.emoji;
         _chatEventController.add(ChatUnreadReactionEvent(chatId, emoji));
