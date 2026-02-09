@@ -115,20 +115,19 @@ class MessageState {
   // Message management methods
   MessageState addMessage(int chatId, Message message) {
     final newMessages = Map<int, List<Message>>.from(messagesByChat);
-    if (!newMessages.containsKey(chatId)) {
-      newMessages[chatId] = [];
-    }
+    final newList = List<Message>.from(newMessages[chatId] ?? []);
 
     // Check if message already exists to avoid duplicates
-    final existingIndex = newMessages[chatId]!.indexWhere(
+    final existingIndex = newList.indexWhere(
       (msg) => msg.id == message.id,
     );
     if (existingIndex != -1) {
-      newMessages[chatId]![existingIndex] = message;
+      newList[existingIndex] = message;
     } else {
-      newMessages[chatId]!.insert(0, message);
+      newList.insert(0, message);
     }
 
+    newMessages[chatId] = newList;
     return copyWith(messagesByChat: newMessages);
   }
 
