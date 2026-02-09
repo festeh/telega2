@@ -621,7 +621,11 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
 
     // Check if we've already marked this message
     final lastMarked = currentState.getLastMarkedMessageId(chatId);
-    if (lastMarked == messageId) return;
+    if (lastMarked == messageId) {
+      // Still clear reactions — they may have arrived after the message was read
+      _client.readAllChatReactions(chatId);
+      return;
+    }
 
     try {
       await _client.markAsRead(chatId, messageId);
