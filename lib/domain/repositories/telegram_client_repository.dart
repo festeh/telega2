@@ -75,6 +75,12 @@ abstract class TelegramClientRepository {
     String? caption,
     int? replyToMessageId,
   });
+  Future<void> sendAnimation(
+    int chatId,
+    MediaItem item, {
+    String? caption,
+    int? replyToMessageId,
+  });
   Future<void> sendDocument(
     int chatId,
     String filePath, {

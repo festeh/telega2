@@ -9,6 +9,7 @@ import '../../presentation/providers/telegram_client_provider.dart';
 import 'photo_message.dart';
 import 'sticker_message.dart';
 import 'video_message.dart';
+import 'animation_message.dart';
 import 'link_preview_card.dart';
 import 'emoji_text.dart';
 import '../emoji_sticker/telegram_emoji_widget.dart';
@@ -368,8 +369,40 @@ class MessageBubble extends ConsumerWidget {
       case MessageType.sticker:
         return _buildMediaMessage(context, Icons.emoji_emotions, 'Sticker');
       case MessageType.animation:
-        return _buildMediaMessage(context, Icons.gif, 'GIF');
+        return _buildAnimationMessage(context);
     }
+  }
+
+  Widget _buildAnimationMessage(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final hasCaption = message.content.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AnimationMessageWidget(
+          animationPath: message.animation?.path,
+          animationWidth: message.animation?.width,
+          animationHeight: message.animation?.height,
+          thumbnailPath: message.animation?.thumbnailPath,
+          animationFileId: message.animation?.fileId,
+          isOutgoing: message.isOutgoing,
+        ),
+        if (hasCaption) ...[
+          const SizedBox(height: 8),
+          EmojiText(
+            text: message.content,
+            style: TextStyle(
+              fontSize: 16,
+              height: 1.3,
+              color: message.isOutgoing
+                  ? colorScheme.onPrimary
+                  : colorScheme.onSurface,
+            ),
+          ),
+        ],
+      ],
+    );
   }
 
   Widget _buildPhotoMessage(BuildContext context) {

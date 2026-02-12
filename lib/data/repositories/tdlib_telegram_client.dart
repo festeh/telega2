@@ -65,6 +65,8 @@ class TdlibTelegramClient implements TelegramClientRepository {
   final Map<int, ({int chatId, int messageId})> _stickerFileToMessage = {};
   // Track file ID to message ID mapping for video updates
   final Map<int, ({int chatId, int messageId})> _videoFileToMessage = {};
+  // Track file ID to message ID mapping for animation updates
+  final Map<int, ({int chatId, int messageId})> _animationFileToMessage = {};
 
   // Sticker file cache: fileId -> localPath (for picker caching)
   final Map<int, String> _stickerFileCache = {};
@@ -1423,6 +1425,38 @@ class TdlibTelegramClient implements TelegramClientRepository {
   }
 
   @override
+  Future<void> sendAnimation(
+    int chatId,
+    MediaItem item, {
+    String? caption,
+    int? replyToMessageId,
+  }) async {
+    try {
+      final request = {
+        '@type': 'sendMessage',
+        'chat_id': chatId,
+        if (replyToMessageId != null)
+          'reply_to': {
+            '@type': 'inputMessageReplyToMessage',
+            'message_id': replyToMessageId,
+          },
+        'input_message_content': {
+          '@type': 'inputMessageAnimation',
+          'animation': {'@type': 'inputFileLocal', 'path': item.path},
+          if (caption != null && caption.isNotEmpty)
+            'caption': {'@type': 'formattedText', 'text': caption},
+        },
+      };
+
+      // TDLib's updateNewMessage will handle adding to cache and UI
+      await _sendRequestAsync(request, timeout: const Duration(seconds: 10));
+    } catch (e) {
+      _logger.logError('Failed to send animation to chat $chatId', error: e);
+      rethrow;
+    }
+  }
+
+  @override
   Future<void> sendDocument(
     int chatId,
     String filePath, {
@@ -1870,6 +1904,14 @@ class TdlibTelegramClient implements TelegramClientRepository {
     // Track video file ID for download completion updates
     if (processedMessage.video?.fileId != null) {
       _videoFileToMessage[processedMessage.video!.fileId!] = (
+        chatId: chatId,
+        messageId: processedMessage.id,
+      );
+    }
+
+    // Track animation file ID for download completion updates
+    if (processedMessage.animation?.fileId != null) {
+      _animationFileToMessage[processedMessage.animation!.fileId!] = (
         chatId: chatId,
         messageId: processedMessage.id,
       );
@@ -2493,6 +2535,9 @@ class TdlibTelegramClient implements TelegramClientRepository {
         // Update any messages that have this file ID as their video
         _updateMessageVideoByFileId(fileId, filePath);
 
+        // Update any messages that have this file ID as their animation
+        _updateMessageAnimationByFileId(fileId, filePath);
+
         // Update any custom emojis that have this file ID
         _updateCustomEmojiByFileId(fileId, filePath);
       }
@@ -2690,6 +2735,44 @@ class TdlibTelegramClient implements TelegramClientRepository {
 
     // Clean up tracking
     _videoFileToMessage.remove(fileId);
+  }
+
+  void _updateMessageAnimationByFileId(int fileId, String path) {
+    final messageInfo = _animationFileToMessage[fileId];
+    if (messageInfo == null) return;
+
+    final chatId = messageInfo.chatId;
+    final messageId = messageInfo.messageId;
+
+    // Find and update the message in cache
+    final messages = _messages[chatId];
+    if (messages == null) return;
+
+    final index = messages.indexWhere((m) => m.id == messageId);
+    if (index == -1) return;
+
+    final existingAnimation = messages[index].animation;
+    if (existingAnimation == null) return;
+    final updatedMessage = messages[index].copyWith(
+      animation: existingAnimation.copyWith(path: path),
+    );
+    messages[index] = updatedMessage;
+
+    _logger.logRequest({
+      '@type': 'message_animation_updated',
+      'chat_id': chatId,
+      'message_id': messageId,
+      'file_id': fileId,
+      'path': path,
+    });
+
+    // Emit typed event for presentation layer
+    _messageEventController.add(
+      MessageAnimationUpdatedEvent(chatId, messageId, path),
+    );
+
+    // Clean up tracking
+    _animationFileToMessage.remove(fileId);
   }
 
   /// Get cached sticker file path if available

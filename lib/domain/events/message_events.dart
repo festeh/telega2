@@ -86,6 +86,14 @@ class MessageVideoUpdatedEvent extends MessageEvent {
   MessageVideoUpdatedEvent(this.chatId, this.messageId, this.videoPath);
 }
 
+/// Emitted when a message's animation finishes downloading.
+class MessageAnimationUpdatedEvent extends MessageEvent {
+  final int chatId;
+  final int messageId;
+  final String animationPath;
+  MessageAnimationUpdatedEvent(this.chatId, this.messageId, this.animationPath);
+}
+
 /// Emitted when a message's reactions are updated.
 class MessageReactionsUpdatedEvent extends MessageEvent {
   final int chatId;

@@ -387,7 +387,13 @@ class _MessageInputAreaState extends ConsumerState<MessageInputArea>
     final ext = filePath.toLowerCase().split('.').last;
     final dotExt = '.$ext';
 
-    if (_imageExtensions.contains(dotExt)) {
+    if (dotExt == '.gif') {
+      await notifier.sendAnimation(
+        chatId,
+        MediaItem(path: filePath),
+        caption: caption.isNotEmpty ? caption : null,
+      );
+    } else if (_imageExtensions.contains(dotExt)) {
       await notifier.sendPhoto(
         chatId,
         MediaItem(path: filePath),

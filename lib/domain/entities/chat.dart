@@ -138,6 +138,47 @@ class VideoInfo {
   }
 }
 
+/// Media file info for animations (GIFs)
+class AnimationInfo {
+  final String? path;
+  final int? fileId;
+  final int? width;
+  final int? height;
+  final int? duration; // seconds
+  final String? thumbnailPath;
+  final int? thumbnailFileId;
+
+  const AnimationInfo({
+    this.path,
+    this.fileId,
+    this.width,
+    this.height,
+    this.duration,
+    this.thumbnailPath,
+    this.thumbnailFileId,
+  });
+
+  AnimationInfo copyWith({
+    String? path,
+    int? fileId,
+    int? width,
+    int? height,
+    int? duration,
+    String? thumbnailPath,
+    int? thumbnailFileId,
+  }) {
+    return AnimationInfo(
+      path: path ?? this.path,
+      fileId: fileId ?? this.fileId,
+      width: width ?? this.width,
+      height: height ?? this.height,
+      duration: duration ?? this.duration,
+      thumbnailPath: thumbnailPath ?? this.thumbnailPath,
+      thumbnailFileId: thumbnailFileId ?? this.thumbnailFileId,
+    );
+  }
+}
+
 class Chat {
   final int id;
   final String title;
@@ -321,6 +362,7 @@ class Message {
   final PhotoInfo? photo;
   final StickerInfo? sticker;
   final VideoInfo? video;
+  final AnimationInfo? animation;
   // Link preview (for messages with URLs)
   final LinkPreviewInfo? linkPreview;
   // Reactions
@@ -343,6 +385,7 @@ class Message {
     this.photo,
     this.sticker,
     this.video,
+    this.animation,
     this.linkPreview,
     this.reactions,
     this.replyToMessageId,
@@ -382,7 +425,8 @@ class Message {
           final emoji = contentMap['sticker']?['emoji'] as String?;
           return emoji != null ? '$emoji Sticker' : '🎭 Sticker';
         case 'messageAnimation':
-          return '🎞️ GIF';
+          final caption = contentMap['caption']?['text'] as String?;
+          return caption?.isNotEmpty == true ? caption! : '';
         case 'messageAnimatedEmoji':
           final emoji = contentMap['emoji'] as String?;
           return emoji ?? '[AnimatedEmoji: $contentMap]';
@@ -532,6 +576,39 @@ class Message {
 
     final video = parseVideoInfo(json['content']);
 
+    // Parse animation info from messageAnimation content
+    AnimationInfo? parseAnimationInfo(Map<String, dynamic>? contentMap) {
+      if (contentMap == null || contentMap['@type'] != 'messageAnimation') {
+        return null;
+      }
+
+      final animData = contentMap['animation'] as Map<String, dynamic>?;
+      if (animData == null) return null;
+
+      // Get animation file info
+      final animFile = animData['animation'] as Map<String, dynamic>?;
+      final localPath = animFile?['local']?['path'] as String?;
+
+      // Get thumbnail info
+      final thumbnail = animData['thumbnail'] as Map<String, dynamic>?;
+      final thumbnailFile = thumbnail?['file'] as Map<String, dynamic>?;
+      final thumbnailPath = thumbnailFile?['local']?['path'] as String?;
+
+      return AnimationInfo(
+        path: (localPath?.isNotEmpty == true) ? localPath : null,
+        fileId: animFile?['id'] as int?,
+        width: animData['width'] as int?,
+        height: animData['height'] as int?,
+        duration: animData['duration'] as int?,
+        thumbnailPath: (thumbnailPath?.isNotEmpty == true)
+            ? thumbnailPath
+            : null,
+        thumbnailFileId: thumbnailFile?['id'] as int?,
+      );
+    }
+
+    final animation = parseAnimationInfo(json['content']);
+
     // Parse sender ID - can be messageSenderUser or messageSenderChat
     int parseSenderId(Map<String, dynamic>? senderIdMap) {
       if (senderIdMap == null) return 0;
@@ -609,6 +686,7 @@ class Message {
       photo: photo,
       sticker: sticker,
       video: video,
+      animation: animation,
       linkPreview: linkPreview,
       reactions: reactions,
       replyToMessageId: replyToMessageId,
@@ -629,6 +707,7 @@ class Message {
     PhotoInfo? photo,
     StickerInfo? sticker,
     VideoInfo? video,
+    AnimationInfo? animation,
     LinkPreviewInfo? linkPreview,
     List<MessageReaction>? reactions,
     int? replyToMessageId,
@@ -647,6 +726,7 @@ class Message {
       photo: photo ?? this.photo,
       sticker: sticker ?? this.sticker,
       video: video ?? this.video,
+      animation: animation ?? this.animation,
       linkPreview: linkPreview ?? this.linkPreview,
       reactions: reactions ?? this.reactions,
       replyToMessageId: replyToMessageId ?? this.replyToMessageId,

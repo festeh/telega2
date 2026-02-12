@@ -103,6 +103,12 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
         :final videoPath,
       ):
         _handleMessageVideoUpdated(chatId, messageId, videoPath);
+      case MessageAnimationUpdatedEvent(
+        :final chatId,
+        :final messageId,
+        :final animationPath,
+      ):
+        _handleMessageAnimationUpdated(chatId, messageId, animationPath);
       case MessageReactionsUpdatedEvent(
         :final chatId,
         :final messageId,
@@ -177,6 +183,29 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
     if (existingVideo == null) return;
     final updatedMessage = messages[index].copyWith(
       video: existingVideo.copyWith(path: videoPath),
+    );
+    state = AsyncData(currentState.updateMessage(chatId, updatedMessage));
+  }
+
+  void _handleMessageAnimationUpdated(
+    int chatId,
+    int messageId,
+    String animationPath,
+  ) {
+    _logger.debug('Message animation updated in chat $chatId: $messageId');
+    final currentState = state.value;
+    if (currentState == null) return;
+
+    final messages = currentState.messagesByChat[chatId];
+    if (messages == null) return;
+
+    final index = messages.indexWhere((m) => m.id == messageId);
+    if (index == -1) return;
+
+    final existingAnimation = messages[index].animation;
+    if (existingAnimation == null) return;
+    final updatedMessage = messages[index].copyWith(
+      animation: existingAnimation.copyWith(path: animationPath),
     );
     state = AsyncData(currentState.updateMessage(chatId, updatedMessage));
   }
@@ -532,6 +561,27 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
     } catch (e) {
       _logger.error('Failed to send video to chat $chatId', error: e);
       _setError('Failed to send video: $e');
+    }
+  }
+
+  Future<void> sendAnimation(int chatId, MediaItem item, {String? caption}) async {
+    try {
+      final currentState = _currentState;
+      final replyToMessageId = currentState.replyingToMessage?.id;
+      state = AsyncData(currentState.setSending(true));
+
+      await _client.sendAnimation(
+        chatId,
+        item,
+        caption: caption,
+        replyToMessageId: replyToMessageId,
+      );
+      _logger.debug('Animation sent to chat $chatId');
+
+      state = AsyncData(_currentState.setSending(false).clearReplyingTo());
+    } catch (e) {
+      _logger.error('Failed to send animation to chat $chatId', error: e);
+      _setError('Failed to send animation: $e');
     }
   }
 
