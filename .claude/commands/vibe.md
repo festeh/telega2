@@ -18,8 +18,9 @@ Help the user pick the right approach: write a spec, create a plan, or start cod
    - If empty: Ask what they want to build.
 
 2. **Create a feature branch**:
-   Run: `vc branch "<feature description>"`
+   Run `vc branch "<feature description>"` as a single command (no fallbacks, no chaining).
    Creates a numbered branch like `001-add-user-auth`.
+   If it fails, stop and tell the user to install vibecheck.
 
 3. **Classify the request**:
    - New feature or enhancement?

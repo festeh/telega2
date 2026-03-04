@@ -33,10 +33,16 @@ Define WHAT to build. Skip implementation details (no specific frameworks, datab
 
 ## What Users Can Do
 
-1. **[Action]**
-   [What the user does and why]
-   - Works when: [success scenario]
-   - Fails when: [edge case]
+1. **[Action Name]**
+
+   - **Scenario: Successful Action**
+     - **Given:** [Precondition]
+     - **When:** [Action]
+     - **Then:** [Result]
+
+   - **Scenario: Failure Case** (optional)
+     - **When:** [Bad Input]
+     - **Then:** [Specific Error]
 
 ## Requirements
 
@@ -65,14 +71,27 @@ Output (`specs/003-password-reset/spec.md`):
 ## What Users Can Do
 
 1. **Request password reset**
-   User enters email to get a reset link.
-   - Works when: Email exists, link sent within 1 minute
-   - Fails when: Email not found, show helpful message
+
+   - **Scenario: Successful request**
+     - **Given:** User has an account
+     - **When:** User enters their email
+     - **Then:** Reset link sent within 1 minute
+
+   - **Scenario: Unknown email**
+     - **When:** User enters unregistered email
+     - **Then:** Show helpful "email not found" message
 
 2. **Set new password**
-   User clicks link and creates new password.
-   - Works when: Link valid, password meets rules, user logged in
-   - Fails when: Link expired (after 24h), show "request new link"
+
+   - **Scenario: Successful reset**
+     - **Given:** User has valid reset link
+     - **When:** User enters new password meeting rules
+     - **Then:** Password updated, user logged in
+
+   - **Scenario: Expired link**
+     - **Given:** Reset link is older than 24 hours
+     - **When:** User clicks the link
+     - **Then:** Show "request new link" message
 
 ## Requirements
 
