@@ -14,6 +14,8 @@ class MessageState {
   final Message? replyingToMessage;
   // Mark-as-read tracking per chat (chatId -> last marked messageId)
   final Map<int, int> lastMarkedMessageIds;
+  // Tracks chats where all history has been loaded
+  final Set<int> noMoreMessagesChats;
 
   const MessageState({
     this.messagesByChat = const {},
@@ -26,6 +28,7 @@ class MessageState {
     this.isInitialized = false,
     this.replyingToMessage,
     this.lastMarkedMessageIds = const {},
+    this.noMoreMessagesChats = const {},
   });
 
   // Factory constructors for common states
@@ -47,6 +50,7 @@ class MessageState {
     Message? replyingToMessage,
     bool clearReplyingTo = false,
     Map<int, int>? lastMarkedMessageIds,
+    Set<int>? noMoreMessagesChats,
   }) {
     return MessageState(
       messagesByChat: messagesByChat ?? this.messagesByChat,
@@ -63,6 +67,7 @@ class MessageState {
           ? null
           : (replyingToMessage ?? this.replyingToMessage),
       lastMarkedMessageIds: lastMarkedMessageIds ?? this.lastMarkedMessageIds,
+      noMoreMessagesChats: noMoreMessagesChats ?? this.noMoreMessagesChats,
     );
   }
 
@@ -83,6 +88,20 @@ class MessageState {
     final newMap = Map<int, int>.from(lastMarkedMessageIds);
     newMap[chatId] = messageId;
     return copyWith(lastMarkedMessageIds: newMap);
+  }
+
+  // Track when all history has been loaded for a chat
+  MessageState markNoMoreMessages(int chatId) {
+    final newSet = Set<int>.from(noMoreMessagesChats)..add(chatId);
+    return copyWith(noMoreMessagesChats: newSet);
+  }
+
+  bool hasMoreMessages(int chatId) => !noMoreMessagesChats.contains(chatId);
+
+  MessageState resetNoMoreMessages(int chatId) {
+    if (!noMoreMessagesChats.contains(chatId)) return this;
+    final newSet = Set<int>.from(noMoreMessagesChats)..remove(chatId);
+    return copyWith(noMoreMessagesChats: newSet);
   }
 
   // Helper methods
@@ -206,7 +225,8 @@ class MessageState {
         other.errorMessage != errorMessage ||
         other.isInitialized != isInitialized ||
         other.replyingToMessage?.id != replyingToMessage?.id ||
-        other.lastMarkedMessageIds.length != lastMarkedMessageIds.length) {
+        other.lastMarkedMessageIds.length != lastMarkedMessageIds.length ||
+        other.noMoreMessagesChats.length != noMoreMessagesChats.length) {
       return false;
     }
 
@@ -257,6 +277,7 @@ class MessageState {
       initializedChatIds.length,
       replyingToMessage?.id,
       lastMarkedMessageIds.length,
+      noMoreMessagesChats.length,
     );
   }
 }

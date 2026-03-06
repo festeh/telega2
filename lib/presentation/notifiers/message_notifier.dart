@@ -415,11 +415,16 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
       _downloadMessageMedia(messages);
 
       // Update state with loaded messages and mark chat as initialized
-      final newState = currentState
+      var newState = currentState
           .selectChat(chatId)
           .addMessages(chatId, messages)
           .markChatInitialized(chatId)
           .setLoading(false);
+
+      // Reset end-of-history flag on refresh so user can scroll up again
+      if (forceRefresh) {
+        newState = newState.resetNoMoreMessages(chatId);
+      }
 
       state = AsyncData(newState);
     } catch (e) {
@@ -452,6 +457,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
     try {
       final currentState = state.value;
       if (currentState == null || currentState.isLoadingMore) return;
+      if (!currentState.hasMoreMessages(chatId)) return;
 
       final existingMessages = currentState.messagesByChat[chatId] ?? [];
       if (existingMessages.isEmpty) return;
@@ -462,7 +468,11 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
       // Get oldest message ID for pagination
       final oldestMessageId = existingMessages.last.id;
 
+      // Track message count before loading to detect if new messages arrived
+      final countBefore = existingMessages.length;
+
       // Load more messages from client
+      // Note: during this await, _handleMessagesBatch may fire and update state
       final messages = await _client.loadMessages(
         chatId,
         fromMessageId: oldestMessageId,
@@ -470,14 +480,25 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
 
       _logger.debug('Loaded ${messages.length} more messages for chat $chatId');
 
-      // Update state with additional messages
-      final newState = currentState
+      // Re-read state after await to avoid overwriting concurrent batch updates
+      final latestState = state.value ?? currentState;
+      final countAfter = latestState.messagesByChat[chatId]?.length ?? 0;
+
+      var newState = latestState
           .addMessages(chatId, messages)
           .setLoadingMore(false);
+
+      // If no new messages were added (by batch event or return value),
+      // we've reached the end of chat history
+      if (countAfter <= countBefore) {
+        newState = newState.markNoMoreMessages(chatId);
+      }
 
       state = AsyncData(newState);
     } catch (e) {
       _logger.error('Failed to load more messages for chat $chatId', error: e);
+      final latestState = state.value ?? _currentState;
+      state = AsyncData(latestState.setLoadingMore(false));
       _setError('Failed to load more messages: $e');
     }
   }

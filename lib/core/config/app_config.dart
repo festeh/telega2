@@ -37,5 +37,5 @@ abstract class AppConfig {
   static const minCachedMessages = 30;
 
   /// Maximum messages to keep cached per chat
-  static const maxMessagesPerChat = 100;
+  static const maxMessagesPerChat = 500;
 }

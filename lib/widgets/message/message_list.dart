@@ -80,11 +80,11 @@ class _MessageListState extends ConsumerState<MessageList> {
   }
 
   void _loadMoreMessages() {
-    if (!ref.read(
-      messageProvider.select((state) => state.value?.isLoadingMore ?? false),
-    )) {
-      ref.read(messageProvider.notifier).loadMoreMessages(widget.chat.id);
-    }
+    final msgState = ref.read(messageProvider).value;
+    if (msgState == null) return;
+    if (msgState.isLoadingMore) return;
+    if (!msgState.hasMoreMessages(widget.chat.id)) return;
+    ref.read(messageProvider.notifier).loadMoreMessages(widget.chat.id);
   }
 
   void _markLatestAsRead(List<Message>? messages) {
