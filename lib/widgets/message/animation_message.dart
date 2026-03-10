@@ -260,15 +260,19 @@ class _FullScreenAnimationState extends State<_FullScreenAnimation> {
                       )
                     : const CircularProgressIndicator(color: Colors.white),
               ),
-              Positioned(
-                top: 40,
-                right: 16,
-                child: IconButton(
-                  onPressed: _close,
-                  icon: const Icon(
-                    Icons.close,
-                    color: Colors.white,
-                    size: 28,
+              SafeArea(
+                child: Align(
+                  alignment: Alignment.topRight,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: IconButton(
+                      onPressed: _close,
+                      icon: const Icon(
+                        Icons.close,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
                   ),
                 ),
               ),
