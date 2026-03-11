@@ -10,6 +10,7 @@ import 'photo_message.dart';
 import 'sticker_message.dart';
 import 'video_message.dart';
 import 'animation_message.dart';
+import 'document_message.dart';
 import 'link_preview_card.dart';
 import 'emoji_text.dart';
 import '../emoji_sticker/telegram_emoji_widget.dart';
@@ -172,7 +173,8 @@ class MessageBubble extends ConsumerWidget {
       case MessageType.sticker:
         return message.sticker?.emoji ?? '🎭 Sticker';
       case MessageType.document:
-        return '📎 Document';
+        final docName = message.document?.fileName;
+        return docName != null ? '📎 $docName' : '📎 Document';
       case MessageType.audio:
         return '🎵 Audio';
       case MessageType.voice:
@@ -361,7 +363,7 @@ class MessageBubble extends ConsumerWidget {
       case MessageType.video:
         return _buildVideoMessage(context);
       case MessageType.document:
-        return _buildMediaMessage(context, Icons.description, 'Document');
+        return _buildDocumentMessage(context);
       case MessageType.audio:
         return _buildMediaMessage(context, Icons.audiotrack, 'Audio');
       case MessageType.voice:
@@ -371,6 +373,39 @@ class MessageBubble extends ConsumerWidget {
       case MessageType.animation:
         return _buildAnimationMessage(context);
     }
+  }
+
+  Widget _buildDocumentMessage(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final hasCaption = message.content.isNotEmpty &&
+        message.content != (message.document?.fileName ?? '');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DocumentMessageWidget(
+          documentPath: message.document?.path,
+          documentFileId: message.document?.fileId,
+          fileName: message.document?.fileName,
+          mimeType: message.document?.mimeType,
+          size: message.document?.size,
+          isOutgoing: message.isOutgoing,
+        ),
+        if (hasCaption) ...[
+          const SizedBox(height: 8),
+          EmojiText(
+            text: message.content,
+            style: TextStyle(
+              fontSize: 16,
+              height: 1.3,
+              color: message.isOutgoing
+                  ? colorScheme.onPrimary
+                  : colorScheme.onSurface,
+            ),
+          ),
+        ],
+      ],
+    );
   }
 
   Widget _buildAnimationMessage(BuildContext context) {

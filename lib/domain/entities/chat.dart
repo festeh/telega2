@@ -179,6 +179,39 @@ class AnimationInfo {
   }
 }
 
+/// Media file info for documents/files
+class DocumentInfo {
+  final String? path;
+  final int? fileId;
+  final String? fileName;
+  final String? mimeType;
+  final int? size; // bytes
+
+  const DocumentInfo({
+    this.path,
+    this.fileId,
+    this.fileName,
+    this.mimeType,
+    this.size,
+  });
+
+  DocumentInfo copyWith({
+    String? path,
+    int? fileId,
+    String? fileName,
+    String? mimeType,
+    int? size,
+  }) {
+    return DocumentInfo(
+      path: path ?? this.path,
+      fileId: fileId ?? this.fileId,
+      fileName: fileName ?? this.fileName,
+      mimeType: mimeType ?? this.mimeType,
+      size: size ?? this.size,
+    );
+  }
+}
+
 class Chat {
   final int id;
   final String title;
@@ -363,6 +396,7 @@ class Message {
   final StickerInfo? sticker;
   final VideoInfo? video;
   final AnimationInfo? animation;
+  final DocumentInfo? document;
   // Link preview (for messages with URLs)
   final LinkPreviewInfo? linkPreview;
   // Reactions
@@ -386,6 +420,7 @@ class Message {
     this.sticker,
     this.video,
     this.animation,
+    this.document,
     this.linkPreview,
     this.reactions,
     this.replyToMessageId,
@@ -416,7 +451,10 @@ class Message {
           // Video notes don't have captions
           return '';
         case 'messageDocument':
-          return '📎 Document';
+          final caption = contentMap['caption']?['text'] as String?;
+          if (caption?.isNotEmpty == true) return caption!;
+          final docName = contentMap['document']?['file_name'] as String?;
+          return docName ?? '📎 Document';
         case 'messageAudio':
           return '🎵 Audio';
         case 'messageVoiceNote':
@@ -609,6 +647,29 @@ class Message {
 
     final animation = parseAnimationInfo(json['content']);
 
+    // Parse document info from messageDocument content
+    DocumentInfo? parseDocumentInfo(Map<String, dynamic>? contentMap) {
+      if (contentMap == null || contentMap['@type'] != 'messageDocument') {
+        return null;
+      }
+
+      final docData = contentMap['document'] as Map<String, dynamic>?;
+      if (docData == null) return null;
+
+      final docFile = docData['document'] as Map<String, dynamic>?;
+      final localPath = docFile?['local']?['path'] as String?;
+
+      return DocumentInfo(
+        path: (localPath?.isNotEmpty == true) ? localPath : null,
+        fileId: docFile?['id'] as int?,
+        fileName: docData['file_name'] as String?,
+        mimeType: docData['mime_type'] as String?,
+        size: docFile?['expected_size'] as int? ?? docFile?['size'] as int?,
+      );
+    }
+
+    final document = parseDocumentInfo(json['content']);
+
     // Parse sender ID - can be messageSenderUser or messageSenderChat
     int parseSenderId(Map<String, dynamic>? senderIdMap) {
       if (senderIdMap == null) return 0;
@@ -687,6 +748,7 @@ class Message {
       sticker: sticker,
       video: video,
       animation: animation,
+      document: document,
       linkPreview: linkPreview,
       reactions: reactions,
       replyToMessageId: replyToMessageId,
@@ -708,6 +770,7 @@ class Message {
     StickerInfo? sticker,
     VideoInfo? video,
     AnimationInfo? animation,
+    DocumentInfo? document,
     LinkPreviewInfo? linkPreview,
     List<MessageReaction>? reactions,
     int? replyToMessageId,
@@ -727,6 +790,7 @@ class Message {
       sticker: sticker ?? this.sticker,
       video: video ?? this.video,
       animation: animation ?? this.animation,
+      document: document ?? this.document,
       linkPreview: linkPreview ?? this.linkPreview,
       reactions: reactions ?? this.reactions,
       replyToMessageId: replyToMessageId ?? this.replyToMessageId,

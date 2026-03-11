@@ -109,6 +109,12 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
         :final animationPath,
       ):
         _handleMessageAnimationUpdated(chatId, messageId, animationPath);
+      case MessageDocumentUpdatedEvent(
+        :final chatId,
+        :final messageId,
+        :final documentPath,
+      ):
+        _handleMessageDocumentUpdated(chatId, messageId, documentPath);
       case MessageReactionsUpdatedEvent(
         :final chatId,
         :final messageId,
@@ -206,6 +212,29 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
     if (existingAnimation == null) return;
     final updatedMessage = messages[index].copyWith(
       animation: existingAnimation.copyWith(path: animationPath),
+    );
+    state = AsyncData(currentState.updateMessage(chatId, updatedMessage));
+  }
+
+  void _handleMessageDocumentUpdated(
+    int chatId,
+    int messageId,
+    String documentPath,
+  ) {
+    _logger.debug('Message document updated in chat $chatId: $messageId');
+    final currentState = state.value;
+    if (currentState == null) return;
+
+    final messages = currentState.messagesByChat[chatId];
+    if (messages == null) return;
+
+    final index = messages.indexWhere((m) => m.id == messageId);
+    if (index == -1) return;
+
+    final existingDocument = messages[index].document;
+    if (existingDocument == null) return;
+    final updatedMessage = messages[index].copyWith(
+      document: existingDocument.copyWith(path: documentPath),
     );
     state = AsyncData(currentState.updateMessage(chatId, updatedMessage));
   }

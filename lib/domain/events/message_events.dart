@@ -94,6 +94,14 @@ class MessageAnimationUpdatedEvent extends MessageEvent {
   MessageAnimationUpdatedEvent(this.chatId, this.messageId, this.animationPath);
 }
 
+/// Emitted when a message's document finishes downloading.
+class MessageDocumentUpdatedEvent extends MessageEvent {
+  final int chatId;
+  final int messageId;
+  final String documentPath;
+  MessageDocumentUpdatedEvent(this.chatId, this.messageId, this.documentPath);
+}
+
 /// Emitted when a message's reactions are updated.
 class MessageReactionsUpdatedEvent extends MessageEvent {
   final int chatId;

@@ -67,6 +67,8 @@ class TdlibTelegramClient implements TelegramClientRepository {
   final Map<int, ({int chatId, int messageId})> _videoFileToMessage = {};
   // Track file ID to message ID mapping for animation updates
   final Map<int, ({int chatId, int messageId})> _animationFileToMessage = {};
+  // Track file ID to message ID mapping for document updates
+  final Map<int, ({int chatId, int messageId})> _documentFileToMessage = {};
 
   // Sticker file cache: fileId -> localPath (for picker caching)
   final Map<int, String> _stickerFileCache = {};
@@ -1916,6 +1918,14 @@ class TdlibTelegramClient implements TelegramClientRepository {
         messageId: processedMessage.id,
       );
     }
+
+    // Track document file ID for download completion updates
+    if (processedMessage.document?.fileId != null) {
+      _documentFileToMessage[processedMessage.document!.fileId!] = (
+        chatId: chatId,
+        messageId: processedMessage.id,
+      );
+    }
   }
 
   /// Removes a message from the cache by ID.
@@ -2538,6 +2548,9 @@ class TdlibTelegramClient implements TelegramClientRepository {
         // Update any messages that have this file ID as their animation
         _updateMessageAnimationByFileId(fileId, filePath);
 
+        // Update any messages that have this file ID as their document
+        _updateMessageDocumentByFileId(fileId, filePath);
+
         // Update any custom emojis that have this file ID
         _updateCustomEmojiByFileId(fileId, filePath);
       }
@@ -2773,6 +2786,44 @@ class TdlibTelegramClient implements TelegramClientRepository {
 
     // Clean up tracking
     _animationFileToMessage.remove(fileId);
+  }
+
+  void _updateMessageDocumentByFileId(int fileId, String path) {
+    final messageInfo = _documentFileToMessage[fileId];
+    if (messageInfo == null) return;
+
+    final chatId = messageInfo.chatId;
+    final messageId = messageInfo.messageId;
+
+    // Find and update the message in cache
+    final messages = _messages[chatId];
+    if (messages == null) return;
+
+    final index = messages.indexWhere((m) => m.id == messageId);
+    if (index == -1) return;
+
+    final existingDocument = messages[index].document;
+    if (existingDocument == null) return;
+    final updatedMessage = messages[index].copyWith(
+      document: existingDocument.copyWith(path: path),
+    );
+    messages[index] = updatedMessage;
+
+    _logger.logRequest({
+      '@type': 'message_document_updated',
+      'chat_id': chatId,
+      'message_id': messageId,
+      'file_id': fileId,
+      'path': path,
+    });
+
+    // Emit typed event for presentation layer
+    _messageEventController.add(
+      MessageDocumentUpdatedEvent(chatId, messageId, path),
+    );
+
+    // Clean up tracking
+    _documentFileToMessage.remove(fileId);
   }
 
   /// Get cached sticker file path if available
