@@ -290,7 +290,25 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
     _logger.debug('New message received for chat $chatId');
     final currentState = state.value;
     if (currentState != null) {
-      state = AsyncData(currentState.addMessage(chatId, message));
+      final newState = currentState.addMessage(chatId, message);
+      if (chatId == currentState.selectedChatId) {
+        final statesEqual = currentState == newState;
+        final mapsIdentical =
+            identical(currentState.messagesByChat, newState.messagesByChat);
+        final listsIdentical = identical(
+          currentState.messagesByChat[chatId],
+          newState.messagesByChat[chatId],
+        );
+        _logger.debug(
+          'NEW_MSG_DIAG chat=$chatId msgId=${message.id}: '
+          'statesEqual=$statesEqual '
+          'mapsIdentical=$mapsIdentical '
+          'listsIdentical=$listsIdentical '
+          'oldListLen=${currentState.messagesByChat[chatId]?.length} '
+          'newListLen=${newState.messagesByChat[chatId]?.length}',
+        );
+      }
+      state = AsyncData(newState);
     }
   }
 
