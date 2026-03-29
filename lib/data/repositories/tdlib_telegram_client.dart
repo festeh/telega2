@@ -1230,6 +1230,99 @@ class TdlibTelegramClient implements TelegramClientRepository {
     }
   }
 
+  @override
+  Future<int?> getMessageIdByDate(int chatId, DateTime date) async {
+    try {
+      final unixTimestamp = date.millisecondsSinceEpoch ~/ 1000;
+      final response = await _sendRequestAsync({
+        '@type': 'getChatMessageByDate',
+        'chat_id': chatId,
+        'date': unixTimestamp,
+      }, timeout: const Duration(seconds: 10));
+
+      if (response == null || response['@type'] == 'error') {
+        return null;
+      }
+
+      if (response['@type'] == 'message') {
+        return response['id'] as int?;
+      }
+
+      return null;
+    } catch (e) {
+      _logger.logError(
+        'Failed to get message by date for chat $chatId',
+        error: e,
+      );
+      return null;
+    }
+  }
+
+  @override
+  Future<List<Message>> loadMessagesInRange(
+    int chatId,
+    DateTime fromDate,
+    DateTime toDate,
+  ) async {
+    final List<Message> result = [];
+
+    try {
+      // Find the message closest to toDate to start paginating backward
+      final endMessageId = await getMessageIdByDate(chatId, toDate);
+      if (endMessageId == null) return result;
+
+      int currentFromId = endMessageId;
+      bool reachedStart = false;
+
+      while (!reachedStart) {
+        final response = await _sendRequestAsync({
+          '@type': 'getChatHistory',
+          'chat_id': chatId,
+          'limit': AppConfig.messagePageSize,
+          'from_message_id': currentFromId,
+          'offset': 0,
+          'only_local': false,
+        }, timeout: const Duration(seconds: 10));
+
+        final messagesList = response?['messages'] as List?;
+        if (messagesList == null || messagesList.isEmpty) break;
+
+        for (final msgJson in messagesList) {
+          if (msgJson is Map<String, dynamic>) {
+            final message = _createMessageFromJson(msgJson);
+            if (message.date.isBefore(fromDate)) {
+              reachedStart = true;
+              break;
+            }
+            if (!message.date.isAfter(toDate)) {
+              result.add(message);
+            }
+          }
+        }
+
+        if (!reachedStart) {
+          // Get oldest message ID from this batch for next page
+          final lastMsg = messagesList.last as Map<String, dynamic>;
+          final lastId = lastMsg['id'] as int?;
+          if (lastId == null || lastId == currentFromId) break;
+          currentFromId = lastId;
+        }
+
+        // Small delay between pages
+        await Future.delayed(AppConfig.retryDelay);
+      }
+    } catch (e) {
+      _logger.logError(
+        'Failed to load messages in range for chat $chatId',
+        error: e,
+      );
+    }
+
+    // Sort chronologically (oldest first)
+    result.sort((a, b) => a.date.compareTo(b.date));
+    return result;
+  }
+
   /// Get a reply message - checks cache first, fetches from server if needed.
   /// Returns cached message synchronously if available.
   @override

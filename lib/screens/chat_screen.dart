@@ -6,6 +6,8 @@ import '../domain/entities/chat.dart';
 import 'chat_helpers.dart';
 import '../widgets/message/message_list.dart';
 import '../widgets/message/message_input_area.dart';
+import '../widgets/chat_export/chat_export_dialog.dart';
+import '../presentation/providers/chat_export_provider.dart';
 
 class ChatScreen extends ConsumerWidget {
   final Chat chat;
@@ -119,9 +121,25 @@ class ChatScreen extends ConsumerWidget {
           onSelected: (value) {
             if (value == 'logout') {
               showLogoutDialog(context, ref);
+            } else if (value == 'export') {
+              ref.read(chatExportProvider.notifier).reset();
+              showDialog(
+                context: context,
+                builder: (_) => ChatExportDialog(chat: chat),
+              );
             }
           },
           itemBuilder: (context) => [
+            const PopupMenuItem(
+              value: 'export',
+              child: Row(
+                children: [
+                  Icon(Icons.download),
+                  SizedBox(width: 8),
+                  Text('Export chat'),
+                ],
+              ),
+            ),
             const PopupMenuItem(
               value: 'info',
               child: Row(

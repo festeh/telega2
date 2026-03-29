@@ -98,6 +98,15 @@ abstract class TelegramClientRepository {
   Future<void> readAllChatReactions(int chatId);
   Future<bool> deleteMessage(int chatId, int messageId);
   Future<Message?> editMessage(int chatId, int messageId, String newText);
+
+  // Export methods
+  Future<int?> getMessageIdByDate(int chatId, DateTime date);
+  Future<List<Message>> loadMessagesInRange(
+    int chatId,
+    DateTime fromDate,
+    DateTime toDate,
+  );
+
   Future<void> forwardMessages(
     int fromChatId,
     int toChatId,

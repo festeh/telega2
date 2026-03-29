@@ -798,6 +798,28 @@ class Message {
     );
   }
 
+  Map<String, dynamic> toExportJson() {
+    return {
+      'id': id,
+      'date': date.toUtc().toIso8601String(),
+      'senderName': senderName,
+      'isOutgoing': isOutgoing,
+      'type': type.name,
+      'content': content,
+      'replyToMessageId': replyToMessageId,
+      'forwardedFrom': forwardedFrom,
+      'reactions': reactions
+              ?.map((r) => {
+                    'type': r.type.name,
+                    'emoji': r.emoji,
+                    'count': r.count,
+                    'isChosen': r.isChosen,
+                  })
+              .toList() ??
+          [],
+    };
+  }
+
   @override
   String toString() {
     return 'Message(id: $id, chatId: $chatId, content: $content)';
