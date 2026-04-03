@@ -255,7 +255,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
     if (index == -1) return;
 
     final updatedMessage = messages[index].copyWith(
-      reactions: reactions.isEmpty ? null : reactions,
+      reactions: reactions,
     );
     state = AsyncData(currentState.updateMessage(chatId, updatedMessage));
   }

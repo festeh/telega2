@@ -17,7 +17,6 @@ import '../emoji_sticker/telegram_emoji_widget.dart';
 
 class MessageBubble extends ConsumerWidget {
   final Message message;
-  final bool showTime;
   final bool showSender;
   final VoidCallback? onLongPress;
   final VoidCallback? onTap;
@@ -25,7 +24,6 @@ class MessageBubble extends ConsumerWidget {
   const MessageBubble({
     super.key,
     required this.message,
-    this.showTime = true,
     this.showSender = false,
     this.onLongPress,
     this.onTap,
@@ -61,7 +59,7 @@ class MessageBubble extends ConsumerWidget {
                     _buildStickerMessage(context)
                   else
                     _buildMessageBubble(context, ref),
-                  if (showTime) _buildTimeStamp(context),
+                  _buildTimeStamp(context),
                   if (message.reactions != null &&
                       message.reactions!.isNotEmpty)
                     _buildReactionsRow(context, ref),

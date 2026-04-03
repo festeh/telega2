@@ -210,8 +210,6 @@ class _MessageListState extends ConsumerState<MessageList> {
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final message = messages[index];
-                    final isLastInGroup = _isLastInGroup(messages, index);
-                    final showSender = !message.isOutgoing && isLastInGroup;
                     final showDateSeparator = _shouldShowDateSeparator(
                       messages,
                       index,
@@ -224,8 +222,7 @@ class _MessageListState extends ConsumerState<MessageList> {
                         MessageBubble(
                           key: ValueKey(message.id),
                           message: message,
-                          showTime: isLastInGroup,
-                          showSender: showSender,
+                          showSender: !message.isOutgoing,
                           onLongPress: () =>
                               _showMessageOptions(context, message),
                         ),
@@ -305,22 +302,6 @@ class _MessageListState extends ConsumerState<MessageList> {
         child: const Icon(Icons.keyboard_arrow_down),
       ),
     );
-  }
-
-  bool _isLastInGroup(List<Message> messages, int index) {
-    if (index == 0) return true;
-
-    final currentMessage = messages[index];
-    final nextMessage = messages[index - 1]; // Remember: reverse order
-
-    // Different sender
-    if (currentMessage.senderId != nextMessage.senderId) return true;
-
-    // More than 5 minutes apart
-    final timeDifference = nextMessage.date.difference(currentMessage.date);
-    if (timeDifference.inMinutes > 5) return true;
-
-    return false;
   }
 
   bool _shouldShowDateSeparator(List<Message> messages, int index) {
