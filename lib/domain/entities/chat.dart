@@ -8,9 +8,22 @@ int? parseJsonInt64(dynamic value) {
   return null;
 }
 
+/// A media attachment backed by a TDLib file that may need downloading.
+abstract interface class DownloadableMedia {
+  int? get fileId;
+  String? get path;
+}
+
+extension DownloadableMediaX on DownloadableMedia {
+  bool get needsDownload =>
+      fileId != null && (path == null || path!.isEmpty);
+}
+
 /// Media file info for photos
-class PhotoInfo {
+class PhotoInfo implements DownloadableMedia {
+  @override
   final String? path;
+  @override
   final int? fileId;
   final int? width;
   final int? height;
@@ -28,8 +41,10 @@ class PhotoInfo {
 }
 
 /// Media file info for stickers
-class StickerInfo {
+class StickerInfo implements DownloadableMedia {
+  @override
   final String? path;
+  @override
   final int? fileId;
   final int? width;
   final int? height;
@@ -97,15 +112,33 @@ class LinkPreviewInfo {
   }
 }
 
-/// Media file info for videos
-class VideoInfo {
+/// Preview image for videos and animations.
+class ThumbnailInfo implements DownloadableMedia {
+  @override
   final String? path;
+  @override
+  final int? fileId;
+
+  const ThumbnailInfo({this.path, this.fileId});
+
+  ThumbnailInfo copyWith({String? path, int? fileId}) {
+    return ThumbnailInfo(
+      path: path ?? this.path,
+      fileId: fileId ?? this.fileId,
+    );
+  }
+}
+
+/// Media file info for videos
+class VideoInfo implements DownloadableMedia {
+  @override
+  final String? path;
+  @override
   final int? fileId;
   final int? width;
   final int? height;
   final int? duration; // seconds
-  final String? thumbnailPath;
-  final int? thumbnailFileId;
+  final ThumbnailInfo? thumbnail;
 
   const VideoInfo({
     this.path,
@@ -113,8 +146,7 @@ class VideoInfo {
     this.width,
     this.height,
     this.duration,
-    this.thumbnailPath,
-    this.thumbnailFileId,
+    this.thumbnail,
   });
 
   VideoInfo copyWith({
@@ -123,8 +155,7 @@ class VideoInfo {
     int? width,
     int? height,
     int? duration,
-    String? thumbnailPath,
-    int? thumbnailFileId,
+    ThumbnailInfo? thumbnail,
   }) {
     return VideoInfo(
       path: path ?? this.path,
@@ -132,21 +163,21 @@ class VideoInfo {
       width: width ?? this.width,
       height: height ?? this.height,
       duration: duration ?? this.duration,
-      thumbnailPath: thumbnailPath ?? this.thumbnailPath,
-      thumbnailFileId: thumbnailFileId ?? this.thumbnailFileId,
+      thumbnail: thumbnail ?? this.thumbnail,
     );
   }
 }
 
 /// Media file info for animations (GIFs)
-class AnimationInfo {
+class AnimationInfo implements DownloadableMedia {
+  @override
   final String? path;
+  @override
   final int? fileId;
   final int? width;
   final int? height;
   final int? duration; // seconds
-  final String? thumbnailPath;
-  final int? thumbnailFileId;
+  final ThumbnailInfo? thumbnail;
 
   const AnimationInfo({
     this.path,
@@ -154,8 +185,7 @@ class AnimationInfo {
     this.width,
     this.height,
     this.duration,
-    this.thumbnailPath,
-    this.thumbnailFileId,
+    this.thumbnail,
   });
 
   AnimationInfo copyWith({
@@ -164,8 +194,7 @@ class AnimationInfo {
     int? width,
     int? height,
     int? duration,
-    String? thumbnailPath,
-    int? thumbnailFileId,
+    ThumbnailInfo? thumbnail,
   }) {
     return AnimationInfo(
       path: path ?? this.path,
@@ -173,15 +202,16 @@ class AnimationInfo {
       width: width ?? this.width,
       height: height ?? this.height,
       duration: duration ?? this.duration,
-      thumbnailPath: thumbnailPath ?? this.thumbnailPath,
-      thumbnailFileId: thumbnailFileId ?? this.thumbnailFileId,
+      thumbnail: thumbnail ?? this.thumbnail,
     );
   }
 }
 
 /// Media file info for documents/files
-class DocumentInfo {
+class DocumentInfo implements DownloadableMedia {
+  @override
   final String? path;
+  @override
   final int? fileId;
   final String? fileName;
   final String? mimeType;
@@ -427,6 +457,16 @@ class Message {
     this.forwardedFrom,
   });
 
+  Iterable<DownloadableMedia> get downloadables => [
+        photo,
+        sticker,
+        video,
+        video?.thumbnail,
+        animation,
+        animation?.thumbnail,
+        document,
+      ].whereType<DownloadableMedia>();
+
   factory Message.fromJson(
     Map<String, dynamic> json, {
     String? senderName,
@@ -605,10 +645,10 @@ class Message {
         width: videoData['width'] as int?,
         height: videoData['height'] as int?,
         duration: videoData['duration'] as int?,
-        thumbnailPath: (thumbnailPath?.isNotEmpty == true)
-            ? thumbnailPath
-            : null,
-        thumbnailFileId: thumbnailFile?['id'] as int?,
+        thumbnail: ThumbnailInfo(
+          path: (thumbnailPath?.isNotEmpty == true) ? thumbnailPath : null,
+          fileId: thumbnailFile?['id'] as int?,
+        ),
       );
     }
 
@@ -638,10 +678,10 @@ class Message {
         width: animData['width'] as int?,
         height: animData['height'] as int?,
         duration: animData['duration'] as int?,
-        thumbnailPath: (thumbnailPath?.isNotEmpty == true)
-            ? thumbnailPath
-            : null,
-        thumbnailFileId: thumbnailFile?['id'] as int?,
+        thumbnail: ThumbnailInfo(
+          path: (thumbnailPath?.isNotEmpty == true) ? thumbnailPath : null,
+          fileId: thumbnailFile?['id'] as int?,
+        ),
       );
     }
 

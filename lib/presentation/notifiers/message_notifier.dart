@@ -387,13 +387,13 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
       }
       // Preserve video thumbnail path
       if (confirmedMessage.video != null &&
-          (confirmedMessage.video!.thumbnailPath == null ||
-              confirmedMessage.video!.thumbnailPath!.isEmpty) &&
-          oldMessage.video?.thumbnailPath != null &&
-          oldMessage.video!.thumbnailPath!.isNotEmpty) {
+          (confirmedMessage.video!.thumbnail?.path == null ||
+              confirmedMessage.video!.thumbnail!.path!.isEmpty) &&
+          oldMessage.video?.thumbnail?.path != null &&
+          oldMessage.video!.thumbnail!.path!.isNotEmpty) {
         confirmedMessage = confirmedMessage.copyWith(
           video: confirmedMessage.video!.copyWith(
-            thumbnailPath: oldMessage.video!.thumbnailPath,
+            thumbnail: oldMessage.video!.thumbnail,
           ),
         );
       }
@@ -482,20 +482,10 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
 
   void _downloadMessageMedia(List<Message> messages) {
     for (final message in messages) {
-      // Download photos
-      if (message.photo?.fileId != null &&
-          (message.photo?.path == null || message.photo!.path!.isEmpty)) {
-        _client.downloadFile(message.photo!.fileId!);
-      }
-      // Download stickers
-      if (message.sticker?.fileId != null &&
-          (message.sticker?.path == null || message.sticker!.path!.isEmpty)) {
-        _client.downloadFile(message.sticker!.fileId!);
-      }
-      // Download videos
-      if (message.video?.fileId != null &&
-          (message.video?.path == null || message.video!.path!.isEmpty)) {
-        _client.downloadFile(message.video!.fileId!);
+      for (final media in message.downloadables) {
+        if (media.needsDownload) {
+          _client.downloadFile(media.fileId!);
+        }
       }
     }
   }
