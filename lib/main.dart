@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:media_kit/media_kit.dart';
 import 'presentation/providers/app_providers.dart';
 import 'presentation/providers/telegram_client_provider.dart';
 import 'screens/auth_screen.dart';
@@ -28,6 +29,7 @@ const _loadingPhrases = [
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized();
 
   // Load environment variables
   await dotenv.load(fileName: ".env");

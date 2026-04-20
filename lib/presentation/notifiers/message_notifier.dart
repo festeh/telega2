@@ -288,6 +288,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
 
   void _handleNewMessage(int chatId, Message message) {
     _logger.debug('New message received for chat $chatId');
+    _downloadMessageMedia([message]);
     final currentState = state.value;
     if (currentState != null) {
       final newState = currentState.addMessage(chatId, message);

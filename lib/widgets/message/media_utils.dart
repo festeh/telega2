@@ -1,4 +1,19 @@
+import 'dart:io';
+import 'package:media_kit_video/media_kit_video.dart';
 import '../../core/constants/ui_constants.dart';
+
+/// media_kit's hardware-accelerated texture path renders incorrectly on Linux
+/// (video turns solid blue after the first frame), so we force software
+/// rendering there. Other platforms keep hardware acceleration for
+/// battery/performance.
+VideoControllerConfiguration videoControllerConfig() {
+  if (Platform.isLinux) {
+    return const VideoControllerConfiguration(
+      enableHardwareAcceleration: false,
+    );
+  }
+  return const VideoControllerConfiguration();
+}
 
 /// Calculates display dimensions for media content while maintaining aspect ratio.
 ///

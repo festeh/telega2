@@ -1,12 +1,14 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:video_player/video_player.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import '../../core/constants/ui_constants.dart';
 import '../../presentation/providers/download_progress_provider.dart';
 import '../common/circular_download_progress.dart';
-import 'media_placeholder.dart';
+import 'media_error.dart';
 import 'media_utils.dart';
 
 class AnimationMessageWidget extends ConsumerStatefulWidget {
@@ -34,8 +36,12 @@ class AnimationMessageWidget extends ConsumerStatefulWidget {
 
 class _AnimationMessageWidgetState
     extends ConsumerState<AnimationMessageWidget> {
-  VideoPlayerController? _controller;
+  Player? _player;
+  VideoController? _videoController;
+  StreamSubscription<int?>? _widthSub;
+  StreamSubscription<String>? _errorSub;
   bool _isInitialized = false;
+  String? _initError;
 
   @override
   void initState() {
@@ -50,31 +56,60 @@ class _AnimationMessageWidgetState
     if (oldWidget.animationPath != widget.animationPath &&
         widget.animationPath != null &&
         widget.animationPath!.isNotEmpty) {
+      _initError = null;
       _initIfReady();
     }
   }
 
   void _initIfReady() {
     final path = widget.animationPath;
-    if (path == null || path.isEmpty || _controller != null) return;
+    if (path == null || path.isEmpty || _player != null) return;
 
-    final controller = VideoPlayerController.file(File(path));
-    _controller = controller;
-    controller.setLooping(true);
-    controller.setVolume(0);
-    controller.initialize().then((_) {
-      if (!mounted) return;
+    final player = Player();
+    _player = player;
+    _videoController = VideoController(
+      player,
+      configuration: videoControllerConfig(),
+    );
+
+    _widthSub = player.stream.width.listen((w) {
+      if (!mounted || w == null || _isInitialized) return;
       setState(() => _isInitialized = true);
-      controller.play();
-    }).catchError((e) {
-      debugPrint('Error initializing animation: $e');
     });
+
+    _errorSub = player.stream.error.listen((err) {
+      if (!mounted || err.isEmpty) return;
+      debugPrint('Error initializing animation: $err');
+      setState(() => _initError = err);
+    });
+
+    player.setPlaylistMode(PlaylistMode.loop);
+    player.setVolume(0);
+    player.open(Media(path));
   }
 
   @override
   void dispose() {
-    _controller?.dispose();
+    _widthSub?.cancel();
+    _errorSub?.cancel();
+    _player?.dispose();
     super.dispose();
+  }
+
+  MediaError? _currentError(bool downloadFailed) {
+    if (_initError != null) {
+      return MediaError(message: 'Cannot play GIF', details: _initError);
+    }
+    if (downloadFailed && widget.animationFileId != null) {
+      return MediaError(
+        message: 'Download failed',
+        onRetry: () => ref.retryDownload(widget.animationFileId!),
+      );
+    }
+    if (widget.animationFileId == null && !_isInitialized) {
+      return const MediaError(message: 'No file attached');
+    }
+    return null;
   }
 
   void _openFullScreen(BuildContext context) {
@@ -113,6 +148,8 @@ class _AnimationMessageWidgetState
     final hasFailed =
         downloadState != null && downloadState.status == DownloadStatus.failed;
 
+    final error = _currentError(hasFailed);
+
     return GestureDetector(
       onTap: hasAnimation ? () => _openFullScreen(context) : null,
       child: ClipRRect(
@@ -124,38 +161,30 @@ class _AnimationMessageWidgetState
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Auto-playing video, thumbnail, or placeholder
-              if (_isInitialized && _controller != null)
-                FittedBox(
+              // Background: playing video, or thumbnail (if downloaded)
+              if (_isInitialized && _videoController != null)
+                Video(
+                  controller: _videoController!,
+                  controls: NoVideoControls,
                   fit: BoxFit.cover,
-                  child: SizedBox(
-                    width: _controller!.value.size.width,
-                    height: _controller!.value.size.height,
-                    child: VideoPlayer(_controller!),
-                  ),
                 )
-              else if (hasThumbnail)
+              else if (hasThumbnail && error == null)
                 Image.file(
                   File(thumbPath),
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return const MediaPlaceholder(
-                      icon: Icons.gif,
-                      label: 'GIF',
-                    );
-                  },
-                )
-              else
-                const MediaPlaceholder(icon: Icons.gif, label: 'GIF'),
-              // Download progress (only when not yet downloaded)
-              if (!hasAnimation)
+                  errorBuilder: (context, err, stackTrace) => MediaError(
+                    message: 'Thumbnail unreadable',
+                    details: '$err',
+                  ),
+                ),
+              // Error takes over the entire tile when present
+              ?error,
+              // Download progress (only when not yet downloaded and no error)
+              if (!hasAnimation && error == null)
                 Center(
                   child: CircularDownloadProgress(
                     progress: downloadState?.progress ?? 0.0,
-                    hasError: hasFailed,
-                    onRetry: hasFailed && widget.animationFileId != null
-                        ? () => ref.retryDownload(widget.animationFileId!)
-                        : null,
+                    hasError: false,
                   ),
                 ),
               // GIF badge
@@ -199,8 +228,10 @@ class _FullScreenAnimation extends StatefulWidget {
 }
 
 class _FullScreenAnimationState extends State<_FullScreenAnimation> {
-  late VideoPlayerController _controller;
+  late final Player _player;
+  late final VideoController _videoController;
   late final FocusNode _focusNode;
+  StreamSubscription<int?>? _widthSub;
   bool _isInitialized = false;
 
   @override
@@ -208,26 +239,27 @@ class _FullScreenAnimationState extends State<_FullScreenAnimation> {
     super.initState();
     _focusNode = FocusNode();
     _focusNode.requestFocus();
-    _initializeVideo();
-  }
+    _player = Player();
+    _videoController = VideoController(
+      _player,
+      configuration: videoControllerConfig(),
+    );
 
-  Future<void> _initializeVideo() async {
-    _controller = VideoPlayerController.file(File(widget.animationPath));
-    try {
-      await _controller.initialize();
-      _controller.setLooping(true);
-      _controller.setVolume(0);
+    _widthSub = _player.stream.width.listen((w) {
+      if (!mounted || w == null || _isInitialized) return;
       setState(() => _isInitialized = true);
-      _controller.play();
-    } catch (e) {
-      debugPrint('Error initializing animation: $e');
-    }
+    });
+
+    _player.setPlaylistMode(PlaylistMode.loop);
+    _player.setVolume(0);
+    _player.open(Media(widget.animationPath));
   }
 
   @override
   void dispose() {
+    _widthSub?.cancel();
     _focusNode.dispose();
-    _controller.dispose();
+    _player.dispose();
     super.dispose();
   }
 
@@ -254,9 +286,9 @@ class _FullScreenAnimationState extends State<_FullScreenAnimation> {
             children: [
               Center(
                 child: _isInitialized
-                    ? AspectRatio(
-                        aspectRatio: _controller.value.aspectRatio,
-                        child: VideoPlayer(_controller),
+                    ? Video(
+                        controller: _videoController,
+                        controls: NoVideoControls,
                       )
                     : const CircularProgressIndicator(color: Colors.white),
               ),

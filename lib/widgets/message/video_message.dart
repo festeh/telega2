@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:video_player/video_player.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import '../../core/constants/ui_constants.dart';
 import '../../presentation/providers/download_progress_provider.dart';
 import '../common/circular_download_progress.dart';
@@ -160,49 +162,48 @@ class _FullScreenVideoPlayer extends StatefulWidget {
 }
 
 class _FullScreenVideoPlayerState extends State<_FullScreenVideoPlayer> {
-  late VideoPlayerController _controller;
+  late final Player _player;
+  late final VideoController _videoController;
   late final FocusNode _focusNode;
+  final List<StreamSubscription<Object?>> _subs = [];
   bool _isInitialized = false;
   bool _showControls = true;
-  bool _isPlaying = false;
 
   @override
   void initState() {
     super.initState();
     _focusNode = FocusNode();
     _focusNode.requestFocus();
-    _initializeVideo();
+    _player = Player();
+    _videoController = VideoController(
+      _player,
+      configuration: videoControllerConfig(),
+    );
+
+    _subs.addAll([
+      _player.stream.playing.listen((_) => _rebuild()),
+      _player.stream.position.listen((_) => _rebuild()),
+      _player.stream.duration.listen((_) => _rebuild()),
+      _player.stream.width.listen((w) {
+        if (!mounted || w == null || _isInitialized) return;
+        setState(() => _isInitialized = true);
+      }),
+    ]);
+
+    _player.open(Media(widget.videoPath));
   }
 
-  Future<void> _initializeVideo() async {
-    _controller = VideoPlayerController.file(File(widget.videoPath));
-    try {
-      await _controller.initialize();
-      _controller.addListener(_videoListener);
-      setState(() {
-        _isInitialized = true;
-      });
-      // Auto-play on open
-      _controller.play();
-    } catch (e) {
-      debugPrint('Error initializing video: $e');
-    }
-  }
-
-  void _videoListener() {
-    final isPlaying = _controller.value.isPlaying;
-    if (isPlaying != _isPlaying) {
-      setState(() {
-        _isPlaying = isPlaying;
-      });
-    }
+  void _rebuild() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    for (final sub in _subs) {
+      sub.cancel();
+    }
     _focusNode.dispose();
-    _controller.removeListener(_videoListener);
-    _controller.dispose();
+    _player.dispose();
     super.dispose();
   }
 
@@ -211,10 +212,10 @@ class _FullScreenVideoPlayerState extends State<_FullScreenVideoPlayer> {
   }
 
   void _togglePlayPause() {
-    if (_controller.value.isPlaying) {
-      _controller.pause();
+    if (_player.state.playing) {
+      _player.pause();
     } else {
-      _controller.play();
+      _player.play();
     }
   }
 
@@ -232,6 +233,10 @@ class _FullScreenVideoPlayerState extends State<_FullScreenVideoPlayer> {
 
   @override
   Widget build(BuildContext context) {
+    final isPlaying = _player.state.playing;
+    final position = _player.state.position;
+    final duration = _player.state.duration;
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: KeyboardListener(
@@ -253,9 +258,9 @@ class _FullScreenVideoPlayerState extends State<_FullScreenVideoPlayer> {
               // Video
               Center(
                 child: _isInitialized
-                    ? AspectRatio(
-                        aspectRatio: _controller.value.aspectRatio,
-                        child: VideoPlayer(_controller),
+                    ? Video(
+                        controller: _videoController,
+                        controls: NoVideoControls,
                       )
                     : const CircularProgressIndicator(color: Colors.white),
               ),
@@ -287,9 +292,7 @@ class _FullScreenVideoPlayerState extends State<_FullScreenVideoPlayer> {
                             onPressed: _togglePlayPause,
                             iconSize: 64,
                             icon: Icon(
-                              _isPlaying
-                                  ? Icons.pause_circle
-                                  : Icons.play_circle,
+                              isPlaying ? Icons.pause_circle : Icons.play_circle,
                               color: Colors.white,
                             ),
                           ),
@@ -303,42 +306,55 @@ class _FullScreenVideoPlayerState extends State<_FullScreenVideoPlayer> {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              VideoProgressIndicator(
-                                _controller,
-                                allowScrubbing: true,
-                                colors: VideoProgressColors(
-                                  playedColor: Colors.white,
-                                  bufferedColor: Colors.white38,
-                                  backgroundColor: Colors.white24,
+                              SliderTheme(
+                                data: SliderTheme.of(context).copyWith(
+                                  trackHeight: 3,
+                                  thumbShape: const RoundSliderThumbShape(
+                                    enabledThumbRadius: 6,
+                                  ),
+                                  overlayShape: const RoundSliderOverlayShape(
+                                    overlayRadius: 12,
+                                  ),
+                                  activeTrackColor: Colors.white,
+                                  inactiveTrackColor: Colors.white24,
+                                  thumbColor: Colors.white,
+                                  overlayColor: Colors.white24,
+                                ),
+                                child: Slider(
+                                  value: _sliderValue(position, duration),
+                                  max: duration.inMilliseconds == 0
+                                      ? 1
+                                      : duration.inMilliseconds.toDouble(),
+                                  onChanged: (value) => _player.seek(
+                                    Duration(milliseconds: value.toInt()),
+                                  ),
                                 ),
                               ),
-                              const SizedBox(height: 8),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  ValueListenableBuilder<VideoPlayerValue>(
-                                    valueListenable: _controller,
-                                    builder: (context, value, child) {
-                                      return Text(
-                                        _formatDuration(value.position),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 12,
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                  Text(
-                                    _formatDuration(
-                                      _controller.value.duration,
+                              const SizedBox(height: 4),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      _formatDuration(position),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                      ),
                                     ),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
+                                    Text(
+                                      _formatDuration(duration),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -350,6 +366,14 @@ class _FullScreenVideoPlayerState extends State<_FullScreenVideoPlayer> {
           ),
         ),
       ),
+    );
+  }
+
+  double _sliderValue(Duration position, Duration duration) {
+    if (duration.inMilliseconds == 0) return 0;
+    return position.inMilliseconds.toDouble().clamp(
+      0,
+      duration.inMilliseconds.toDouble(),
     );
   }
 }
