@@ -1,6 +1,12 @@
 # Variables
 flutter_bin := "flutter"
 tdlib_path := "linux/lib/libtdjson.so"
+tdlib_src := env_var_or_default("TDLIB_SRC", env_var("HOME") / "github/td")
+tdlib_repo := "https://github.com/tdlib/td.git"
+android_sdk := env_var_or_default("ANDROID_SDK_ROOT", env_var("HOME") / "Android/Sdk")
+ndk_version := env_var_or_default("ANDROID_NDK_VERSION", "29.0.13113456")
+android_jni := "android/app/src/main/jniLibs"
+android_abis := "arm64-v8a armeabi-v7a x86_64 x86"
 
 # Default recipe
 default:
@@ -102,43 +108,243 @@ download-tdlib-direct:
         exit 1
     fi
 
-# Build TDLib for Android from source (matches Linux version)
-# Prerequisites: gperf, php, make, perl, java
-# TDLib source should be at ~/github/td
-build-tdlib-android:
+# Build TDLib for Android from source (all 4 ABIs)
+# Prerequisites: gperf, php, make, perl, java, ninja, Android SDK+NDK
+build-tdlib-android: _ensure-tdlib-src
     #!/usr/bin/env bash
     set -euo pipefail
 
-    ANDROID_SDK="/home/dima/Android/Sdk"
-    NDK_VERSION="29.0.13113456"
-    TDLIB_DIR="$HOME/github/td"
-
-    echo "📦 Building TDLib for Android from source..."
-
-    if [ ! -d "$TDLIB_DIR" ]; then
-        echo "📡 Cloning TDLib..."
-        mkdir -p "$HOME/github"
-        git clone https://github.com/tdlib/td.git "$TDLIB_DIR"
+    if [ ! -d "{{android_sdk}}/ndk/{{ndk_version}}" ]; then
+        echo "❌ Android NDK {{ndk_version}} not found at {{android_sdk}}/ndk/"
+        echo "💡 Install via Android Studio SDK Manager or set ANDROID_NDK_VERSION"
+        exit 1
     fi
 
-    cd "$TDLIB_DIR/example/android"
+    echo "📦 Building TDLib for Android ABIs: {{android_abis}}"
+    cd "{{tdlib_src}}/example/android"
 
-    # Build OpenSSL if not already built
-    if [ ! -d "third_party/openssl" ]; then
-        echo "🔐 Building OpenSSL..."
-        ./build-openssl.sh "$ANDROID_SDK" "$NDK_VERSION"
+    # Build OpenSSL once; reused for subsequent TDLib rebuilds
+    if [ ! -d "third-party/openssl" ]; then
+        echo "🔐 Building OpenSSL (one-time, ~5 min)..."
+        ./build-openssl.sh "{{android_sdk}}" "{{ndk_version}}"
     fi
 
-    # Build TDLib with JSON interface
-    echo "🔨 Building TDLib (this takes a few minutes)..."
-    ./build-tdlib.sh "$ANDROID_SDK" "$NDK_VERSION" '' '' 'JSON'
+    echo "🔨 Building TDLib JSON (all ABIs, ~5-10 min)..."
+    ./build-tdlib.sh "{{android_sdk}}" "{{ndk_version}}" '' '' 'JSON'
 
-    # Copy to project
-    mkdir -p "{{justfile_directory()}}/android/app/src/main/jniLibs/arm64-v8a"
-    cp tdlib/libs/arm64-v8a/libtdjson.so "{{justfile_directory()}}/android/app/src/main/jniLibs/arm64-v8a/"
+    # Copy all ABIs into the Flutter project
+    for abi in {{android_abis}}; do
+        src="tdlib/libs/$abi/libtdjson.so"
+        dst="{{justfile_directory()}}/{{android_jni}}/$abi/libtdjson.so"
+        if [ ! -f "$src" ]; then
+            echo "❌ Missing build output: $src"
+            exit 1
+        fi
+        mkdir -p "$(dirname "$dst")"
+        cp "$src" "$dst"
+        echo "  ✓ $abi → $dst"
+    done
 
     echo "✓ TDLib for Android built and installed!"
-    ls -la "{{justfile_directory()}}/android/app/src/main/jniLibs/arm64-v8a/"
+    ls -lh "{{justfile_directory()}}/{{android_jni}}"/*/libtdjson.so
+
+# Build libtdjson.so for Linux from TDLib source
+build-tdlib-linux: _ensure-tdlib-src
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    echo "📦 Building TDLib for Linux from source (~10-20 min)..."
+
+    missing=()
+    for tool in cmake make gcc g++ gperf; do
+        command -v $tool >/dev/null 2>&1 || missing+=($tool)
+    done
+    if [ ${#missing[@]} -gt 0 ]; then
+        echo "❌ Missing build tools: ${missing[*]}"
+        echo "💡 Install with: sudo pacman -S cmake make gcc gperf (Arch)"
+        echo "             or: sudo apt install cmake make build-essential gperf (Debian)"
+        exit 1
+    fi
+
+    cd "{{tdlib_src}}"
+    mkdir -p build
+    cd build
+    cmake -DCMAKE_BUILD_TYPE=Release -DTD_ENABLE_LTO=ON .. >/dev/null
+    cmake --build . --target tdjson -j$(nproc)
+
+    mkdir -p "{{justfile_directory()}}/linux/lib"
+    cp libtdjson.so.* "{{justfile_directory()}}/{{tdlib_path}}" 2>/dev/null || \
+        cp libtdjson.so "{{justfile_directory()}}/{{tdlib_path}}"
+    chmod +x "{{justfile_directory()}}/{{tdlib_path}}"
+
+    echo "✓ Linux libtdjson.so installed"
+    ls -lh "{{justfile_directory()}}/{{tdlib_path}}"
+
+# Ensure TDLib source checkout exists (clones if missing)
+_ensure-tdlib-src:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ ! -d "{{tdlib_src}}/.git" ]; then
+        echo "📡 Cloning TDLib to {{tdlib_src}}..."
+        mkdir -p "$(dirname "{{tdlib_src}}")"
+        git clone {{tdlib_repo}} "{{tdlib_src}}"
+    fi
+
+# Print TDLib version from source + installed binaries
+tdlib-version:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "📋 TDLib versions:"
+    if [ -f "{{tdlib_src}}/CMakeLists.txt" ]; then
+        src_version=$(grep -oE "project\(TDLib VERSION [0-9.]+" "{{tdlib_src}}/CMakeLists.txt" | awk '{print $NF}')
+        src_ref=$(git -C "{{tdlib_src}}" rev-parse --short HEAD 2>/dev/null || echo "?")
+        src_branch=$(git -C "{{tdlib_src}}" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "?")
+        echo "  source: $src_version ($src_branch @ $src_ref)"
+    else
+        echo "  source: (not cloned — run 'just _ensure-tdlib-src')"
+    fi
+    for so in "{{justfile_directory()}}/{{tdlib_path}}" \
+              "{{justfile_directory()}}/{{android_jni}}"/*/libtdjson.so; do
+        if [ -f "$so" ]; then
+            v=$( (strings "$so" 2>/dev/null | grep -oE "libtdjson\.so\.[0-9.]+" | head -1 | sed 's/libtdjson\.so\.//') || true )
+            if [ -z "$v" ]; then
+                v=$( (strings "$so" 2>/dev/null | grep -E "^1\.[6-9]\.[0-9]+$" | head -1) || true )
+            fi
+            v=${v:-?}
+            rel=${so#"{{justfile_directory()}}/"}
+            size=$(ls -lh "$so" | awk '{print $5}')
+            echo "  $rel: $v ($size)"
+        fi
+    done
+
+# Migrate TDLib to a given git ref (tag/branch/commit) and rebuild for all platforms.
+# Usage:
+#   just migrate-tdlib              # rebuild at current source HEAD
+#   just migrate-tdlib master       # pull & checkout master
+#   just migrate-tdlib v1.8.0       # checkout a tag
+#   just migrate-tdlib abc123       # checkout a commit
+#
+# Pipeline: checkout → build Linux → build Android (4 ABIs) → verify SONAMEs →
+#           flutter build linux --release → flutter build apk → summary
+migrate-tdlib ref="": _ensure-tdlib-src
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    echo "══════════════════════════════════════════════════════"
+    echo "  TDLib Migration"
+    echo "══════════════════════════════════════════════════════"
+
+    # 1. Sync source
+    cd "{{tdlib_src}}"
+    echo "📡 Fetching latest from origin..."
+    git fetch --tags --prune origin
+
+    if [ -n "$(git status --porcelain)" ]; then
+        echo "❌ TDLib source at {{tdlib_src}} has uncommitted changes. Clean or stash first."
+        git status --short
+        exit 1
+    fi
+    if [ -n "{{ref}}" ]; then
+        echo "🔀 Checking out ref: {{ref}}"
+        git checkout "{{ref}}"
+    fi
+    # Fast-forward current branch (if detached HEAD, skip)
+    if git symbolic-ref -q HEAD >/dev/null; then
+        branch=$(git symbolic-ref --short HEAD)
+        echo "⏩ Fast-forwarding branch $branch..."
+        git pull --ff-only origin "$branch"
+    else
+        echo "ℹ️  Detached HEAD — using checked-out commit as-is"
+    fi
+
+    new_version=$(grep -oE "project\(TDLib VERSION [0-9.]+" CMakeLists.txt | awk '{print $NF}')
+    new_ref=$(git rev-parse --short HEAD)
+    new_branch=$(git rev-parse --abbrev-ref HEAD)
+    echo "🎯 Target: TDLib $new_version ($new_branch @ $new_ref)"
+
+    # 2. Show current installed versions for diff
+    cd "{{justfile_directory()}}"
+    extract_version() {
+        local so="$1"
+        [ -f "$so" ] || { echo "none"; return; }
+        local v
+        v=$( (strings "$so" 2>/dev/null | grep -oE "libtdjson\.so\.[0-9.]+" | head -1 | sed 's/libtdjson\.so\.//') || true )
+        [ -n "$v" ] || v=$( (strings "$so" 2>/dev/null | grep -E "^1\.[6-9]\.[0-9]+$" | head -1) || true )
+        echo "${v:-unknown}"
+    }
+    old_linux=$(extract_version "{{tdlib_path}}")
+    old_android=$(extract_version "{{android_jni}}/arm64-v8a/libtdjson.so")
+    echo ""
+    echo "📊 Current installed:"
+    echo "    linux:   $old_linux"
+    echo "    android: $old_android"
+    echo "📊 Migrating to: $new_version"
+    echo ""
+
+    # 3. Build native libraries
+    just build-tdlib-linux
+    just build-tdlib-android
+
+    # 4. Verify SONAMEs match target version
+    echo ""
+    echo "🔍 Verifying installed binaries..."
+    failed=0
+    check_version() {
+        local so="$1"
+        local label="$2"
+        if [ ! -f "$so" ]; then
+            echo "  ❌ $label: missing at $so"
+            failed=1
+            return
+        fi
+        local v
+        v=$( (strings "$so" 2>/dev/null | grep -oE "libtdjson\.so\.[0-9.]+" | head -1 | sed 's/libtdjson\.so\.//') || true )
+        [ -n "$v" ] || v=$( (strings "$so" 2>/dev/null | grep -E "^1\.[6-9]\.[0-9]+$" | head -1) || true )
+        if [ "$v" = "$new_version" ]; then
+            echo "  ✓ $label: $v"
+        else
+            echo "  ❌ $label: got '${v:-?}', expected '$new_version'"
+            failed=1
+        fi
+    }
+    check_version "{{tdlib_path}}" "linux"
+    for abi in {{android_abis}}; do
+        check_version "{{android_jni}}/$abi/libtdjson.so" "android/$abi"
+    done
+
+    if [ $failed -ne 0 ]; then
+        echo "❌ Version verification failed"
+        exit 1
+    fi
+
+    # 5. Verify Flutter builds
+    echo ""
+    echo "🧪 Verifying Flutter builds..."
+    {{flutter_bin}} pub get >/dev/null
+
+    echo "  🐧 Building Linux release..."
+    {{flutter_bin}} build linux --release
+
+    echo "  🤖 Building Android APK (arm64-v8a)..."
+    {{flutter_bin}} build apk --target-platform android-arm64
+
+    # 6. FFI smoke test (loads libtdjson and calls a sync TDLib function)
+    echo ""
+    echo "  🔬 Linux FFI smoke test..."
+    just smoke-test-tdlib-linux
+
+    echo ""
+    echo "══════════════════════════════════════════════════════"
+    echo "  ✅ Migration complete: $old_linux → $new_version"
+    echo "══════════════════════════════════════════════════════"
+    just tdlib-version
+
+# FFI smoke test — loads libtdjson on Linux, calls a sync TDLib function via FFI, verifies response.
+# Does not require Telegram credentials or network.
+smoke-test-tdlib-linux:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    dart run "{{justfile_directory()}}/tool/tdlib_smoke_test.dart"
 
 # Build TDLib from source (advanced users)
 build-tdlib-source:

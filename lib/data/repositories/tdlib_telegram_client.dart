@@ -999,6 +999,24 @@ class TdlibTelegramClient implements TelegramClientRepository {
   }
 
   @override
+  Future<String?> getTdlibVersion() async {
+    try {
+      final response = await _sendRequestAsync({
+        '@type': 'getOption',
+        'name': 'version',
+      });
+      if (response == null) return null;
+      final value = response['value'];
+      if (value is String) return value;
+      if (value is Map<String, dynamic>) return value['value'] as String?;
+      return null;
+    } catch (e) {
+      _logger.logError('Failed to get TDLib version', error: e);
+      return null;
+    }
+  }
+
+  @override
   Future<List<Chat>> loadChats({
     int limit = 20,
     int offsetOrder = 0,

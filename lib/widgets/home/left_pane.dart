@@ -4,6 +4,7 @@ import '../../core/logging/error_log_buffer.dart';
 import '../../domain/entities/chat.dart';
 import '../../presentation/providers/app_providers.dart';
 import '../../screens/error_log_screen.dart';
+import '../../screens/settings_screen.dart';
 import '../chat/chat_list.dart';
 
 class LeftPane extends ConsumerWidget {
@@ -51,15 +52,53 @@ class LeftPane extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          // Menu icon with error badge
-          IconButton(
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const ErrorLogScreen(),
-                ),
-              );
+          // Menu with error log + settings (shows error badge)
+          PopupMenuButton<String>(
+            tooltip: 'Menu',
+            onSelected: (value) {
+              if (value == 'errors') {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const ErrorLogScreen(),
+                  ),
+                );
+              } else if (value == 'settings') {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const SettingsScreen(),
+                  ),
+                );
+              }
             },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'errors',
+                child: Row(
+                  children: [
+                    Badge(
+                      isLabelVisible: unseenCount > 0,
+                      label: Text(
+                        unseenCount > 99 ? '99+' : unseenCount.toString(),
+                        style: const TextStyle(fontSize: 10),
+                      ),
+                      child: const Icon(Icons.error_outline),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text('Error log'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'settings',
+                child: Row(
+                  children: [
+                    Icon(Icons.settings_outlined),
+                    SizedBox(width: 12),
+                    Text('Settings'),
+                  ],
+                ),
+              ),
+            ],
             icon: Badge(
               isLabelVisible: unseenCount > 0,
               label: Text(
@@ -68,7 +107,6 @@ class LeftPane extends ConsumerWidget {
               ),
               child: Icon(Icons.menu, size: 24, color: mutedColor),
             ),
-            tooltip: 'Error Log',
           ),
           const SizedBox(width: 8),
           // Title

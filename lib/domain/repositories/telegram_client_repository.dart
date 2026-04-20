@@ -133,5 +133,8 @@ abstract class TelegramClientRepository {
   /// Returns the local file path of the animated sticker, or null if not available
   Future<String?> getAnimatedEmoji(String emoji);
 
+  // Diagnostic methods
+  Future<String?> getTdlibVersion();
+
   void dispose();
 }

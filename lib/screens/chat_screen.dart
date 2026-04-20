@@ -119,9 +119,7 @@ class ChatScreen extends ConsumerWidget {
         ),
         PopupMenuButton<String>(
           onSelected: (value) {
-            if (value == 'logout') {
-              showLogoutDialog(context, ref);
-            } else if (value == 'export') {
+            if (value == 'export') {
               ref.read(chatExportProvider.notifier).reset();
               showDialog(
                 context: context,
@@ -147,16 +145,6 @@ class ChatScreen extends ConsumerWidget {
                   Icon(Icons.info_outline),
                   SizedBox(width: 8),
                   Text('Chat info'),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'logout',
-              child: Row(
-                children: [
-                  Icon(Icons.logout),
-                  SizedBox(width: 8),
-                  Text('Logout'),
                 ],
               ),
             ),
