@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../presentation/providers/telegram_client_provider.dart';
+import 'appearance_screen.dart';
 import 'chat_helpers.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -56,6 +57,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: [
+          ListTile(
+            leading: const Icon(Icons.palette_outlined),
+            title: const Text('Appearance'),
+            subtitle: const Text('Accent color, bubble style, density'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const AppearanceScreen(),
+                ),
+              );
+            },
+          ),
+          const Divider(),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Text(

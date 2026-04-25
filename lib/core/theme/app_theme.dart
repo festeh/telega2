@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
+import 'appearance.dart';
+import 'telega_tokens.dart';
+
 /// Design token system for the Telegram Flutter client.
 /// Dark theme only.
 class AppTheme {
   AppTheme._();
-
-  // Brand color
-  static const Color _primary = Color(0xFF3390EC);
 
   // Avatar color palette
   static const List<Color> avatarColors = [
@@ -20,44 +20,65 @@ class AppTheme {
     Color(0xFF9575CD), // Deep purple
   ];
 
-  /// Dark theme configuration
-  static ThemeData get dark {
-    const colorScheme = ColorScheme.dark(
+  /// Dark theme parameterized by user appearance settings.
+  static ThemeData dark(AppearanceSettings settings) {
+    final accent = settings.accent.color;
+    final accentHsl = HSLColor.fromColor(accent);
+
+    // Darken accent for primaryContainer (used as a recessive accent surface).
+    final primaryContainer = accentHsl
+        .withLightness((accentHsl.lightness * 0.45).clamp(0.0, 1.0))
+        .toColor();
+
+    // Lighten accent for inversePrimary (used on inverse surfaces).
+    final inversePrimary = accentHsl
+        .withLightness((accentHsl.lightness * 1.6).clamp(0.0, 1.0))
+        .toColor();
+
+    // Tinted light shade for onPrimaryContainer (text on dark accent surface).
+    final onPrimaryContainer = accentHsl.withLightness(0.92).toColor();
+
+    // Pick onPrimary by accent luminance so filled buttons remain readable.
+    final onPrimary = accent.computeLuminance() > 0.5
+        ? const Color(0xFF1C1C1E)
+        : Colors.white;
+
+    final colorScheme = ColorScheme.dark(
       // Primary
-      primary: _primary,
-      onPrimary: Colors.white,
-      primaryContainer: Color(0xFF004A77),
-      onPrimaryContainer: Color(0xFFD1E4FF),
+      primary: accent,
+      onPrimary: onPrimary,
+      primaryContainer: primaryContainer,
+      onPrimaryContainer: onPrimaryContainer,
 
       // Secondary
-      secondary: Color(0xFF8E8E93),
+      secondary: const Color(0xFF8E8E93),
       onSecondary: Colors.white,
-      secondaryContainer: Color(0xFF3A3A3C),
-      onSecondaryContainer: Color(0xFFE5E5EA),
+      secondaryContainer: const Color(0xFF3A3A3C),
+      onSecondaryContainer: const Color(0xFFE5E5EA),
 
       // Surface (backgrounds)
-      surface: Color(0xFF1C1C1E),
-      onSurface: Color(0xFFE5E5EA),
-      surfaceContainerLowest: Color(0xFF000000),
-      surfaceContainerLow: Color(0xFF1C1C1E),
-      surfaceContainer: Color(0xFF2C2C2E),
-      surfaceContainerHigh: Color(0xFF3A3A3C),
-      surfaceContainerHighest: Color(0xFF48484A),
+      surface: const Color(0xFF1C1C1E),
+      onSurface: const Color(0xFFE5E5EA),
+      surfaceContainerLowest: const Color(0xFF000000),
+      surfaceContainerLow: const Color(0xFF1C1C1E),
+      surfaceContainer: const Color(0xFF2C2C2E),
+      surfaceContainerHigh: const Color(0xFF3A3A3C),
+      surfaceContainerHighest: const Color(0xFF48484A),
 
       // Outline (borders)
-      outline: Color(0xFF48484A),
-      outlineVariant: Color(0xFF3A3A3C),
+      outline: const Color(0xFF48484A),
+      outlineVariant: const Color(0xFF3A3A3C),
 
       // Error
-      error: Color(0xFFFF453A),
+      error: const Color(0xFFFF453A),
       onError: Colors.white,
-      errorContainer: Color(0xFF93000A),
-      onErrorContainer: Color(0xFFFFDAD6),
+      errorContainer: const Color(0xFF93000A),
+      onErrorContainer: const Color(0xFFFFDAD6),
 
       // Inverse
-      inverseSurface: Color(0xFFE5E5EA),
-      onInverseSurface: Color(0xFF1C1C1E),
-      inversePrimary: Color(0xFF0062A1),
+      inverseSurface: const Color(0xFFE5E5EA),
+      onInverseSurface: const Color(0xFF1C1C1E),
+      inversePrimary: inversePrimary,
 
       // Other
       shadow: Colors.black,
@@ -68,6 +89,7 @@ class AppTheme {
       useMaterial3: true,
       brightness: Brightness.dark,
       colorScheme: colorScheme,
+      extensions: <ThemeExtension<dynamic>>[TelegaTokens.from(settings)],
 
       // Scaffold
       scaffoldBackgroundColor: colorScheme.surface,

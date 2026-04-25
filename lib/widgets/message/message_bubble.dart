@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../domain/entities/chat.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/appearance.dart';
+import '../../core/theme/motion.dart';
+import '../../core/theme/telega_tokens.dart';
 import '../../presentation/providers/app_providers.dart';
 import '../../presentation/providers/telegram_client_provider.dart';
 import 'photo_message.dart';
@@ -31,15 +34,17 @@ class MessageBubble extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = Theme.of(context).extension<TelegaTokens>()!;
+    final isOutgoing = message.isOutgoing;
     return GestureDetector(
       onLongPress: onLongPress,
       onTap: onTap,
       child: Container(
         margin: EdgeInsets.only(
-          left: message.isOutgoing ? 50 : 10,
-          right: message.isOutgoing ? 10 : 50,
-          top: 4,
-          bottom: 4,
+          left: isOutgoing ? tokens.bubbleGutterWide : tokens.bubbleGutterNarrow,
+          right: isOutgoing ? tokens.bubbleGutterNarrow : tokens.bubbleGutterWide,
+          top: tokens.gapXs,
+          bottom: tokens.gapXs,
         ),
         child: Row(
           mainAxisAlignment: message.isOutgoing
@@ -77,6 +82,27 @@ class MessageBubble extends ConsumerWidget {
         AppTheme.avatarColors.length];
   }
 
+  /// Text color for content rendered *inside* a message bubble. Picks a
+  /// readable foreground given the bubble style and outgoing/incoming side.
+  Color _textColorOnBubble(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final style = Theme.of(context).extension<TelegaTokens>()!.bubbleStyle;
+    if (style == BubbleStyle.minimalLine) return colorScheme.onSurface;
+    return message.isOutgoing ? colorScheme.onPrimary : colorScheme.onSurface;
+  }
+
+  /// Muted variant of [_textColorOnBubble] for icons and tertiary glyphs.
+  Color _mutedColorOnBubble(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final style = Theme.of(context).extension<TelegaTokens>()!.bubbleStyle;
+    if (style == BubbleStyle.minimalLine) {
+      return colorScheme.onSurface.withValues(alpha: 0.6);
+    }
+    return message.isOutgoing
+        ? colorScheme.onPrimary
+        : colorScheme.onSurface.withValues(alpha: 0.6);
+  }
+
   Widget _buildSenderName(BuildContext context) {
     final avatarColor = _getAvatarColor();
     final displayName = message.senderName ?? 'User ${message.senderId}';
@@ -95,10 +121,13 @@ class MessageBubble extends ConsumerWidget {
 
   Widget _buildForwardedFrom(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final style = Theme.of(context).extension<TelegaTokens>()!.bubbleStyle;
     final isOutgoing = message.isOutgoing;
-    final textColor = isOutgoing
-        ? colorScheme.onPrimary.withValues(alpha: 0.6)
-        : colorScheme.onSurface.withValues(alpha: 0.5);
+    final textColor = style == BubbleStyle.minimalLine
+        ? colorScheme.onSurface.withValues(alpha: 0.5)
+        : (isOutgoing
+              ? colorScheme.onPrimary.withValues(alpha: 0.6)
+              : colorScheme.onSurface.withValues(alpha: 0.5));
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
@@ -116,32 +145,57 @@ class MessageBubble extends ConsumerWidget {
 
   Widget _buildMessageBubble(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<TelegaTokens>()!;
     final isOutgoing = message.isOutgoing;
+    final isMinimalLine = tokens.bubbleStyle == BubbleStyle.minimalLine;
+    final incomingFill = tokens.incomingBubbleFill;
+
+    // Resolve fill + border per side and style. Outgoing always uses the
+    // accent (primary); incoming consults the [IncomingBubbleFill] knob
+    // unless [BubbleStyle.minimalLine] forces a transparent outlined look.
+    final Color fillColor;
+    final Color? borderColor;
+    final double borderWidth;
+
+    if (isOutgoing) {
+      fillColor = isMinimalLine ? Colors.transparent : colorScheme.primary;
+      borderColor = isMinimalLine ? colorScheme.primary : null;
+      borderWidth = 1.5;
+    } else if (isMinimalLine) {
+      fillColor = Colors.transparent;
+      borderColor = colorScheme.outline;
+      borderWidth = 1.5;
+    } else {
+      fillColor = incomingFill.resolve(colorScheme);
+      borderColor = colorScheme.outline;
+      borderWidth = incomingFill.drawsBorder ? 1.5 : 1.0;
+    }
+
+    final hasShadow = !isMinimalLine && !incomingFill.drawsBorder ||
+        isOutgoing && !isMinimalLine;
 
     return Container(
       decoration: BoxDecoration(
-        color: isOutgoing
-            ? colorScheme.primary
-            : colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.only(
-          topLeft: const Radius.circular(16),
-          topRight: const Radius.circular(16),
-          bottomLeft: Radius.circular(isOutgoing ? 16 : 4),
-          bottomRight: Radius.circular(isOutgoing ? 4 : 16),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: colorScheme.shadow.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-        border: !isOutgoing
-            ? Border.all(color: colorScheme.outline, width: 1)
+        color: fillColor,
+        borderRadius: tokens.bubbleRadius(isOutgoing: isOutgoing),
+        boxShadow: hasShadow
+            ? [
+                BoxShadow(
+                  color: colorScheme.shadow.withValues(alpha: 0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null,
+        border: borderColor != null
+            ? Border.all(color: borderColor, width: borderWidth)
             : null,
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: tokens.bubbleHorizontalPadding,
+          vertical: tokens.bubbleVerticalPadding,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -234,12 +288,19 @@ class MessageBubble extends ConsumerWidget {
         ? '${content.substring(0, 50)}...'
         : content;
 
-    final primaryColor = isOutgoing
-        ? colorScheme.onPrimary.withValues(alpha: 0.8)
-        : colorScheme.primary;
-    final textColor = isOutgoing
-        ? colorScheme.onPrimary.withValues(alpha: 0.7)
-        : colorScheme.onSurface.withValues(alpha: 0.7);
+    final isOutline =
+        Theme.of(context).extension<TelegaTokens>()!.bubbleStyle ==
+            BubbleStyle.minimalLine;
+    final primaryColor = isOutline
+        ? colorScheme.primary
+        : (isOutgoing
+              ? colorScheme.onPrimary.withValues(alpha: 0.8)
+              : colorScheme.primary);
+    final textColor = isOutline
+        ? colorScheme.onSurface.withValues(alpha: 0.7)
+        : (isOutgoing
+              ? colorScheme.onPrimary.withValues(alpha: 0.7)
+              : colorScheme.onSurface.withValues(alpha: 0.7));
 
     // Check if replied message has a photo (regular or link preview)
     final photoPath = repliedMessage?.photo?.path;
@@ -266,9 +327,11 @@ class MessageBubble extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           border: Border(left: BorderSide(color: primaryColor, width: 2)),
-          color: isOutgoing
-              ? colorScheme.onPrimary.withValues(alpha: 0.1)
-              : colorScheme.primary.withValues(alpha: 0.1),
+          color: isOutline
+              ? colorScheme.primary.withValues(alpha: 0.1)
+              : (isOutgoing
+                    ? colorScheme.onPrimary.withValues(alpha: 0.1)
+                    : colorScheme.primary.withValues(alpha: 0.1)),
           borderRadius: const BorderRadius.only(
             topRight: Radius.circular(4),
             bottomRight: Radius.circular(4),
@@ -374,7 +437,6 @@ class MessageBubble extends ConsumerWidget {
   }
 
   Widget _buildDocumentMessage(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final hasCaption = message.content.isNotEmpty &&
         message.content != (message.document?.fileName ?? '');
 
@@ -396,9 +458,7 @@ class MessageBubble extends ConsumerWidget {
             style: TextStyle(
               fontSize: 16,
               height: 1.3,
-              color: message.isOutgoing
-                  ? colorScheme.onPrimary
-                  : colorScheme.onSurface,
+              color: _textColorOnBubble(context),
             ),
           ),
         ],
@@ -407,7 +467,6 @@ class MessageBubble extends ConsumerWidget {
   }
 
   Widget _buildAnimationMessage(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final hasCaption = message.content.isNotEmpty;
 
     return Column(
@@ -428,9 +487,7 @@ class MessageBubble extends ConsumerWidget {
             style: TextStyle(
               fontSize: 16,
               height: 1.3,
-              color: message.isOutgoing
-                  ? colorScheme.onPrimary
-                  : colorScheme.onSurface,
+              color: _textColorOnBubble(context),
             ),
           ),
         ],
@@ -439,7 +496,6 @@ class MessageBubble extends ConsumerWidget {
   }
 
   Widget _buildPhotoMessage(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final hasCaption = message.content.isNotEmpty;
 
     return Column(
@@ -459,9 +515,7 @@ class MessageBubble extends ConsumerWidget {
             style: TextStyle(
               fontSize: 16,
               height: 1.3,
-              color: message.isOutgoing
-                  ? colorScheme.onPrimary
-                  : colorScheme.onSurface,
+              color: _textColorOnBubble(context),
             ),
           ),
         ],
@@ -470,7 +524,6 @@ class MessageBubble extends ConsumerWidget {
   }
 
   Widget _buildVideoMessage(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final hasCaption = message.content.isNotEmpty;
 
     return Column(
@@ -492,9 +545,7 @@ class MessageBubble extends ConsumerWidget {
             style: TextStyle(
               fontSize: 16,
               height: 1.3,
-              color: message.isOutgoing
-                  ? colorScheme.onPrimary
-                  : colorScheme.onSurface,
+              color: _textColorOnBubble(context),
             ),
           ),
         ],
@@ -513,7 +564,6 @@ class MessageBubble extends ConsumerWidget {
   }
 
   Widget _buildTextMessage(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final hasLinkPreview = message.linkPreview != null;
 
     if (!hasLinkPreview) {
@@ -522,9 +572,7 @@ class MessageBubble extends ConsumerWidget {
         style: TextStyle(
           fontSize: 16,
           height: 1.3,
-          color: message.isOutgoing
-              ? colorScheme.onPrimary
-              : colorScheme.onSurface,
+          color: _textColorOnBubble(context),
         ),
       );
     }
@@ -537,9 +585,7 @@ class MessageBubble extends ConsumerWidget {
           style: TextStyle(
             fontSize: 16,
             height: 1.3,
-            color: message.isOutgoing
-                ? colorScheme.onPrimary
-                : colorScheme.onSurface,
+            color: _textColorOnBubble(context),
           ),
         ),
         LinkPreviewCard(
@@ -551,16 +597,13 @@ class MessageBubble extends ConsumerWidget {
   }
 
   Widget _buildMediaMessage(BuildContext context, IconData icon, String label) {
-    final colorScheme = Theme.of(context).colorScheme;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(
           icon,
           size: 20,
-          color: message.isOutgoing
-              ? colorScheme.onPrimary
-              : colorScheme.onSurface.withValues(alpha: 0.6),
+          color: _mutedColorOnBubble(context),
         ),
         const SizedBox(width: 8),
         Text(
@@ -568,9 +611,7 @@ class MessageBubble extends ConsumerWidget {
           style: TextStyle(
             fontSize: 16,
             height: 1.3,
-            color: message.isOutgoing
-                ? colorScheme.onPrimary
-                : colorScheme.onSurface,
+            color: _textColorOnBubble(context),
           ),
         ),
       ],
@@ -638,7 +679,6 @@ class MessageBubble extends ConsumerWidget {
   }
 
   Widget _buildReactionsRow(BuildContext context, WidgetRef ref) {
-    final colorScheme = Theme.of(context).colorScheme;
     final reactions = message.reactions!;
 
     return Padding(
@@ -647,83 +687,10 @@ class MessageBubble extends ConsumerWidget {
         spacing: 4,
         runSpacing: 4,
         children: reactions.map((reaction) {
-          final isChosen = reaction.isChosen;
           final isPaid = reaction.type == ReactionType.paid;
-          return GestureDetector(
+          return _ReactionChip(
+            reaction: reaction,
             onTap: isPaid ? null : () => _toggleReaction(ref, reaction),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: isChosen
-                    ? colorScheme.primaryContainer
-                    : colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isChosen
-                      ? colorScheme.primary
-                      : colorScheme.outline.withValues(alpha: 0.3),
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if ((reaction.type == ReactionType.emoji ||
-                          reaction.type == ReactionType.paid) &&
-                      reaction.emoji != null)
-                    TelegramEmojiWidget(
-                      emoji: reaction.emoji!,
-                      size: 16,
-                      animated: false,
-                    )
-                  else if (reaction.type == ReactionType.customEmoji &&
-                      reaction.customEmojiPath != null)
-                    // Custom emoji with downloaded image
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(2),
-                      child: Image.file(
-                        File(reaction.customEmojiPath!),
-                        width: 16,
-                        height: 16,
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, _, _) => Icon(
-                          Icons.emoji_emotions,
-                          size: 14,
-                          color: colorScheme.onSurface.withValues(alpha: 0.6),
-                        ),
-                      ),
-                    )
-                  else if (reaction.type == ReactionType.customEmoji)
-                    // Custom emoji loading placeholder
-                    SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 1.5,
-                        color: colorScheme.onSurface.withValues(alpha: 0.4),
-                      ),
-                    )
-                  else
-                    // Fallback for unknown reaction types
-                    Icon(
-                      Icons.emoji_emotions,
-                      size: 14,
-                      color: colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${reaction.count}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: isChosen ? FontWeight.w600 : FontWeight.w400,
-                      color: isChosen
-                          ? colorScheme.onPrimaryContainer
-                          : colorScheme.onSurface.withValues(alpha: 0.7),
-                    ),
-                  ),
-                ],
-              ),
-            ),
           );
         }).toList(),
       ),
@@ -911,5 +878,144 @@ class _ReplyPostViewer extends StatelessWidget {
       case MessageType.text:
         return 'Message';
     }
+  }
+}
+
+/// A single reaction pill with press feedback. The pill scales up slightly and
+/// flashes a primary tint while the user holds it down — short, bounded by
+/// [kAppearanceTransitionDuration], skipped under reduced-motion.
+class _ReactionChip extends StatefulWidget {
+  const _ReactionChip({required this.reaction, required this.onTap});
+
+  final MessageReaction reaction;
+  final VoidCallback? onTap;
+
+  @override
+  State<_ReactionChip> createState() => _ReactionChipState();
+}
+
+class _ReactionChipState extends State<_ReactionChip> {
+  bool _pressed = false;
+
+  void _setPressed(bool v) {
+    if (_pressed == v) return;
+    setState(() => _pressed = v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final reaction = widget.reaction;
+    final isChosen = reaction.isChosen;
+    final disabled = widget.onTap == null;
+    final duration = motionDurationFor(context, kAppearanceTransitionDuration);
+
+    final restingFill = isChosen
+        ? colorScheme.primaryContainer
+        : colorScheme.surfaceContainerHighest;
+    final pressedFill = colorScheme.primary.withValues(alpha: 0.18);
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: disabled ? null : (_) => _setPressed(true),
+      onTapUp: disabled
+          ? null
+          : (_) {
+              _setPressed(false);
+              widget.onTap!();
+            },
+      onTapCancel: () => _setPressed(false),
+      child: AnimatedScale(
+        scale: _pressed ? 1.08 : 1.0,
+        duration: duration,
+        curve: Curves.easeOutBack,
+        child: AnimatedContainer(
+          duration: duration,
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: _pressed ? pressedFill : restingFill,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isChosen
+                  ? colorScheme.primary
+                  : colorScheme.outline.withValues(alpha: 0.3),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _ReactionGlyph(reaction: reaction),
+              const SizedBox(width: 4),
+              Text(
+                '${reaction.count}',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isChosen ? FontWeight.w600 : FontWeight.w400,
+                  color: isChosen
+                      ? colorScheme.onPrimaryContainer
+                      : colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Renders the icon/emoji portion of a reaction chip — emoji widget,
+/// downloaded custom emoji image, loading spinner, or fallback icon.
+class _ReactionGlyph extends StatelessWidget {
+  const _ReactionGlyph({required this.reaction});
+
+  final MessageReaction reaction;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    if ((reaction.type == ReactionType.emoji ||
+            reaction.type == ReactionType.paid) &&
+        reaction.emoji != null) {
+      return TelegramEmojiWidget(
+        emoji: reaction.emoji!,
+        size: 16,
+        animated: false,
+      );
+    }
+    if (reaction.type == ReactionType.customEmoji &&
+        reaction.customEmojiPath != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(2),
+        child: Image.file(
+          File(reaction.customEmojiPath!),
+          width: 16,
+          height: 16,
+          fit: BoxFit.contain,
+          errorBuilder: (_, _, _) => Icon(
+            Icons.emoji_emotions,
+            size: 14,
+            color: colorScheme.onSurface.withValues(alpha: 0.6),
+          ),
+        ),
+      );
+    }
+    if (reaction.type == ReactionType.customEmoji) {
+      return SizedBox(
+        width: 14,
+        height: 14,
+        child: CircularProgressIndicator(
+          strokeWidth: 1.5,
+          color: colorScheme.onSurface.withValues(alpha: 0.4),
+        ),
+      );
+    }
+    return Icon(
+      Icons.emoji_emotions,
+      size: 14,
+      color: colorScheme.onSurface.withValues(alpha: 0.6),
+    );
   }
 }

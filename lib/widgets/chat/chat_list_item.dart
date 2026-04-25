@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../domain/entities/chat.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/motion.dart';
+import '../../core/theme/telega_tokens.dart';
 
 class ChatListItem extends StatefulWidget {
   final Chat chat;
@@ -25,61 +27,75 @@ class _ChatListItemState extends State<ChatListItem> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<TelegaTokens>()!;
+    final scale = tokens.bodyFontScale;
 
+    final transitionDuration = motionDurationFor(
+      context,
+      kAppearanceTransitionDuration,
+    );
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
+          duration: transitionDuration,
           decoration: BoxDecoration(
             color: _getBackgroundColor(colorScheme),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                _buildAvatar(),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              widget.chat.title,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                                color: widget.isSelected
-                                    ? colorScheme.onPrimary
-                                    : colorScheme.onSurface,
+          child: AnimatedSize(
+            duration: transitionDuration,
+            curve: Curves.easeOut,
+            alignment: Alignment.topCenter,
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: tokens.gapLg,
+                vertical: tokens.listRowVerticalPadding,
+              ),
+              child: Row(
+                children: [
+                  _buildAvatar(context),
+                  SizedBox(width: tokens.gapMd),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                widget.chat.title,
+                                style: TextStyle(
+                                  fontSize: 16 * scale,
+                                  fontWeight: FontWeight.w500,
+                                  color: widget.isSelected
+                                      ? colorScheme.onPrimary
+                                      : colorScheme.onSurface,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          _buildTimestamp(colorScheme),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Expanded(child: _buildLastMessage(colorScheme)),
-                          const SizedBox(width: 8),
-                          _buildReactionBadge(colorScheme),
-                          _buildUnreadBadge(colorScheme),
-                        ],
-                      ),
-                    ],
+                            SizedBox(width: tokens.gapSm),
+                            _buildTimestamp(context),
+                          ],
+                        ),
+                        SizedBox(height: tokens.gapXs),
+                        Row(
+                          children: [
+                            Expanded(child: _buildLastMessage(context)),
+                            SizedBox(width: tokens.gapSm),
+                            _buildReactionBadge(context),
+                            _buildUnreadBadge(context),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -97,10 +113,12 @@ class _ChatListItemState extends State<ChatListItem> {
     return Colors.transparent;
   }
 
-  Widget _buildAvatar() {
+  Widget _buildAvatar(BuildContext context) {
+    final tokens = Theme.of(context).extension<TelegaTokens>()!;
+    final size = tokens.chatListAvatarSize;
     return Container(
-      width: 50,
-      height: 50,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: _getAvatarColor(),
@@ -116,8 +134,8 @@ class _ChatListItemState extends State<ChatListItem> {
           ? Center(
               child: Text(
                 _getInitials(),
-                style: const TextStyle(
-                  fontSize: 18,
+                style: TextStyle(
+                  fontSize: 18 * tokens.bodyFontScale,
                   fontWeight: FontWeight.w500,
                   color: Colors.white,
                 ),
@@ -151,10 +169,12 @@ class _ChatListItemState extends State<ChatListItem> {
     }
   }
 
-  Widget _buildTimestamp(ColorScheme colorScheme) {
+  Widget _buildTimestamp(BuildContext context) {
     final lastActivity = widget.chat.lastActivity;
     if (lastActivity == null) return const SizedBox.shrink();
 
+    final colorScheme = Theme.of(context).colorScheme;
+    final scale = Theme.of(context).extension<TelegaTokens>()!.bodyFontScale;
     final now = DateTime.now();
     final diff = now.difference(lastActivity);
 
@@ -179,10 +199,15 @@ class _ChatListItemState extends State<ChatListItem> {
       timeText = 'now';
     }
 
-    return Text(timeText, style: TextStyle(fontSize: 12, color: timeColor));
+    return Text(
+      timeText,
+      style: TextStyle(fontSize: 12 * scale, color: timeColor),
+    );
   }
 
-  Widget _buildLastMessage(ColorScheme colorScheme) {
+  Widget _buildLastMessage(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final scale = Theme.of(context).extension<TelegaTokens>()!.bodyFontScale;
     final lastMessage = widget.chat.lastMessage;
     final textColor = widget.isSelected
         ? colorScheme.onPrimary.withValues(alpha: 0.7)
@@ -191,7 +216,7 @@ class _ChatListItemState extends State<ChatListItem> {
     if (lastMessage == null) {
       return Text(
         'No messages yet',
-        style: TextStyle(fontSize: 14, color: textColor),
+        style: TextStyle(fontSize: 14 * scale, color: textColor),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       );
@@ -209,7 +234,7 @@ class _ChatListItemState extends State<ChatListItem> {
 
     return Text(
       '$messagePrefix$displayText',
-      style: TextStyle(fontSize: 14, color: textColor),
+      style: TextStyle(fontSize: 14 * scale, color: textColor),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
     );
@@ -236,10 +261,12 @@ class _ChatListItemState extends State<ChatListItem> {
     }
   }
 
-  Widget _buildReactionBadge(ColorScheme colorScheme) {
+  Widget _buildReactionBadge(BuildContext context) {
     final emoji = widget.chat.unreadReactionEmoji;
     if (emoji == null) return const SizedBox.shrink();
 
+    final colorScheme = Theme.of(context).colorScheme;
+    final scale = Theme.of(context).extension<TelegaTokens>()!.bodyFontScale;
     return Padding(
       padding: const EdgeInsets.only(right: 4),
       child: Container(
@@ -252,15 +279,17 @@ class _ChatListItemState extends State<ChatListItem> {
         ),
         child: Text(
           emoji,
-          style: const TextStyle(fontSize: 14),
+          style: TextStyle(fontSize: 14 * scale),
         ),
       ),
     );
   }
 
-  Widget _buildUnreadBadge(ColorScheme colorScheme) {
+  Widget _buildUnreadBadge(BuildContext context) {
     if (widget.chat.unreadCount <= 0) return const SizedBox.shrink();
 
+    final colorScheme = Theme.of(context).colorScheme;
+    final scale = Theme.of(context).extension<TelegaTokens>()!.bodyFontScale;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
@@ -274,7 +303,7 @@ class _ChatListItemState extends State<ChatListItem> {
         child: Text(
           widget.chat.unreadCount > 99 ? '99+' : '${widget.chat.unreadCount}',
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 12 * scale,
             fontWeight: FontWeight.w500,
             color: widget.chat.isMuted
                 ? colorScheme.onSecondary

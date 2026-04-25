@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'presentation/providers/app_providers.dart';
 import 'presentation/providers/telegram_client_provider.dart';
 import 'screens/auth_screen.dart';
@@ -39,7 +40,15 @@ void main() async {
     tdlibLogLevel: TdLibLogLevel.fatal, // Minimal C++ logging
   );
 
-  runApp(const ProviderScope(child: TelegramFlutterApp()));
+  // Pre-load SharedPreferences so theme/appearance reads are sync at first frame.
+  final prefs = await SharedPreferences.getInstance();
+
+  runApp(
+    ProviderScope(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      child: const TelegramFlutterApp(),
+    ),
+  );
 }
 
 class TelegramFlutterApp extends ConsumerWidget {
@@ -47,12 +56,14 @@ class TelegramFlutterApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final appearance = ref.watch(appearanceProvider);
+    final theme = AppTheme.dark(appearance);
     return MaterialApp(
       title: 'Telegram Flutter Client',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.dark,
-      darkTheme: AppTheme.dark,
-      theme: AppTheme.dark,
+      darkTheme: theme,
+      theme: theme,
       home: const AppWrapper(),
     );
   }

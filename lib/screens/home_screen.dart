@@ -2,6 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/constants/ui_constants.dart';
+import '../core/theme/appearance.dart';
+import '../core/theme/motion.dart';
+import '../core/theme/telega_tokens.dart';
 import '../presentation/providers/app_providers.dart';
 import '../presentation/providers/telegram_client_provider.dart';
 import '../domain/entities/chat.dart';
@@ -32,12 +35,39 @@ class HomeScreen extends ConsumerWidget {
         child: LeftPane(
           onChatSelected: (chat) {
             ref.selectChatForMessages(chat.id);
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => ChatScreen(chat: chat)),
-            );
+            Navigator.of(context).push(_chatRoute(chat));
           },
         ),
       ),
+    );
+  }
+
+  /// Forward transition: subtle slide-up from below + fade-in. Back uses the
+  /// inverse automatically. Bounded by [kAppearanceLongTransitionDuration]
+  /// so even with reduced-motion the navigation finishes promptly.
+  Route<void> _chatRoute(Chat chat) {
+    return PageRouteBuilder<void>(
+      pageBuilder: (context, animation, _) => ChatScreen(chat: chat),
+      transitionDuration: kAppearanceLongTransitionDuration,
+      reverseTransitionDuration: kAppearanceLongTransitionDuration,
+      transitionsBuilder: (context, animation, _, child) {
+        if (MediaQuery.maybeDisableAnimationsOf(context) == true) {
+          return child;
+        }
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInCubic,
+        );
+        final slide = Tween<Offset>(
+          begin: const Offset(0, 0.04),
+          end: Offset.zero,
+        ).animate(curved);
+        return FadeTransition(
+          opacity: curved,
+          child: SlideTransition(position: slide, child: child),
+        );
+      },
     );
   }
 
@@ -70,6 +100,8 @@ class HomeScreen extends ConsumerWidget {
 
   Widget _buildChatInterface(BuildContext context, WidgetRef ref, Chat chat) {
     final colorScheme = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<TelegaTokens>()!;
+    final chatBg = tokens.chatBackground.resolve(colorScheme);
 
     return Container(
       color: colorScheme.surface,
@@ -80,7 +112,7 @@ class HomeScreen extends ConsumerWidget {
           // Messages Area
           Expanded(
             child: Container(
-              color: colorScheme.surface,
+              color: chatBg,
               child: MessageList(chat: chat),
             ),
           ),

@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../core/theme/appearance.dart';
+import '../core/theme/telega_tokens.dart';
 import '../presentation/providers/telegram_client_provider.dart';
 import '../domain/entities/chat.dart';
 import 'chat_helpers.dart';
@@ -17,6 +19,8 @@ class ChatScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
+    final tokens = Theme.of(context).extension<TelegaTokens>()!;
+    final chatBg = tokens.chatBackground.resolve(colorScheme);
 
     return Scaffold(
       appBar: _buildAppBar(context, ref, colorScheme),
@@ -26,7 +30,7 @@ class ChatScreen extends ConsumerWidget {
           children: [
             Expanded(
               child: Container(
-                color: colorScheme.surface,
+                color: chatBg,
                 child: MessageList(chat: chat),
               ),
             ),

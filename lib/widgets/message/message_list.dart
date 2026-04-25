@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/theme/motion.dart';
 import '../../domain/entities/chat.dart';
 import '../../presentation/providers/app_providers.dart';
 import '../../presentation/providers/telegram_client_provider.dart';
@@ -24,6 +25,12 @@ class _MessageListState extends ConsumerState<MessageList> {
   late ScrollController _scrollController;
   bool _isAutoScrolling = false;
   bool _shouldAutoScroll = true;
+  // Tracks message IDs that have already played their entrance animation.
+  // Pre-populated with the initial message set so first-load doesn't
+  // animate every history bubble — only new arrivals (sent or received)
+  // animate in. Cleared on chat switch.
+  final Set<int> _seenMessageIds = <int>{};
+  bool _seenIdsCaptured = false;
 
   @override
   void initState() {
@@ -43,6 +50,8 @@ class _MessageListState extends ConsumerState<MessageList> {
     super.didUpdateWidget(oldWidget);
     // When chat changes, load messages for the new chat
     if (oldWidget.chat.id != widget.chat.id) {
+      _seenMessageIds.clear();
+      _seenIdsCaptured = false;
       // Delay the provider modification to avoid modifying during build
       Future(() {
         ref.read(messageProvider.notifier).selectChat(widget.chat.id);
@@ -195,6 +204,14 @@ class _MessageListState extends ConsumerState<MessageList> {
       _markLatestAsRead(messages);
     });
 
+    // First time we see a non-empty list: capture every existing id as
+    // already-animated so initial load doesn't entrance-animate the
+    // entire history.
+    if (!_seenIdsCaptured) {
+      _seenMessageIds.addAll(messages.map((m) => m.id));
+      _seenIdsCaptured = true;
+    }
+
     return Stack(
       children: [
         Column(
@@ -214,19 +231,10 @@ class _MessageListState extends ConsumerState<MessageList> {
                       messages,
                       index,
                     );
-
-                    return Column(
-                      children: [
-                        if (showDateSeparator)
-                          DateSeparator(date: message.date),
-                        MessageBubble(
-                          key: ValueKey(message.id),
-                          message: message,
-                          showSender: !message.isOutgoing,
-                          onLongPress: () =>
-                              _showMessageOptions(context, message),
-                        ),
-                      ],
+                    return _buildMessageRow(
+                      context: context,
+                      message: message,
+                      showDateSeparator: showDateSeparator,
                     );
                   },
                 ),
@@ -234,8 +242,63 @@ class _MessageListState extends ConsumerState<MessageList> {
             ),
           ],
         ),
-        if (!_shouldAutoScroll) _buildScrollToBottomButton(),
+        Positioned(
+          bottom: 16,
+          right: 16,
+          child: AnimatedSwitcher(
+            duration: motionDurationFor(
+              context,
+              kAppearanceTransitionDuration,
+            ),
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(scale: animation, child: child),
+            ),
+            child: _shouldAutoScroll
+                ? const SizedBox.shrink(key: ValueKey('hidden'))
+                : _buildScrollToBottomButton(),
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _buildMessageRow({
+    required BuildContext context,
+    required Message message,
+    required bool showDateSeparator,
+  }) {
+    final shouldAnimate = !_seenMessageIds.contains(message.id);
+    if (shouldAnimate) _seenMessageIds.add(message.id);
+
+    final core = Column(
+      children: [
+        if (showDateSeparator) DateSeparator(date: message.date),
+        MessageBubble(
+          key: ValueKey(message.id),
+          message: message,
+          showSender: !message.isOutgoing,
+          onLongPress: () => _showMessageOptions(context, message),
+        ),
+      ],
+    );
+
+    if (!shouldAnimate) return core;
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: motionDurationFor(context, kAppearanceTransitionDuration),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, (1 - value) * 8),
+            child: child,
+          ),
+        );
+      },
+      child: core,
     );
   }
 
@@ -292,15 +355,12 @@ class _MessageListState extends ConsumerState<MessageList> {
   Widget _buildScrollToBottomButton() {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Positioned(
-      bottom: 16,
-      right: 16,
-      child: FloatingActionButton.small(
-        onPressed: () => _scrollToBottom(),
-        backgroundColor: colorScheme.primary,
-        foregroundColor: colorScheme.onPrimary,
-        child: const Icon(Icons.keyboard_arrow_down),
-      ),
+    return FloatingActionButton.small(
+      key: const ValueKey('scroll-to-bottom'),
+      onPressed: () => _scrollToBottom(),
+      backgroundColor: colorScheme.primary,
+      foregroundColor: colorScheme.onPrimary,
+      child: const Icon(Icons.keyboard_arrow_down),
     );
   }
 

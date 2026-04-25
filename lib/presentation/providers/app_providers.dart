@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../notifiers/auth_notifier.dart';
 import '../notifiers/chat_notifier.dart';
 import '../notifiers/message_notifier.dart';
 import '../notifiers/emoji_sticker_notifier.dart';
+import '../notifiers/appearance_notifier.dart';
 import '../state/unified_auth_state.dart';
 import '../state/chat_state.dart';
 import '../state/message_state.dart';
@@ -10,6 +12,7 @@ import '../state/emoji_sticker_state.dart';
 import '../../domain/entities/chat.dart';
 import '../../domain/entities/sticker.dart';
 import '../../core/logging/error_log_buffer.dart';
+import '../../core/theme/appearance.dart';
 
 // Single source of truth for all authentication state
 final authProvider = AsyncNotifierProvider<AuthNotifier, UnifiedAuthState>(
@@ -296,3 +299,35 @@ final replyCacheVersionProvider =
     NotifierProvider<ReplyCacheVersionNotifier, int>(
       ReplyCacheVersionNotifier.new,
     );
+
+/// Synchronous SharedPreferences handle. Override in `ProviderScope` from
+/// `main()` after awaiting `SharedPreferences.getInstance()` so that
+/// downstream notifiers (e.g. [appearanceProvider]) can read at boot
+/// without flicker.
+final sharedPreferencesProvider = Provider<SharedPreferences>(
+  (ref) => throw UnimplementedError(
+    'sharedPreferencesProvider must be overridden in ProviderScope',
+  ),
+);
+
+/// Single source of truth for user-controlled appearance settings.
+final appearanceProvider =
+    NotifierProvider<AppearanceNotifier, AppearanceSettings>(
+      AppearanceNotifier.new,
+    );
+
+extension AppearanceX on WidgetRef {
+  AppearanceSettings get appearance => watch(appearanceProvider);
+  AccentPreset get appearanceAccent =>
+      watch(appearanceProvider.select((s) => s.accent));
+  BubbleStyle get appearanceBubble =>
+      watch(appearanceProvider.select((s) => s.bubble));
+  Density get appearanceDensity =>
+      watch(appearanceProvider.select((s) => s.density));
+  ChatBackground get appearanceChatBackground =>
+      watch(appearanceProvider.select((s) => s.chatBackground));
+  IncomingBubbleFill get appearanceIncomingBubbleFill =>
+      watch(appearanceProvider.select((s) => s.incomingBubbleFill));
+  AppearanceNotifier get appearanceActions =>
+      read(appearanceProvider.notifier);
+}
