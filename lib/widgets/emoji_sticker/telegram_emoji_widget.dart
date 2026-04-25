@@ -1,29 +1,15 @@
-import 'dart:io';
-import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lottie/lottie.dart';
+import 'package:telega2/core/emoji/emoji_catalog.dart';
 import 'package:telega2/core/logging/app_logger.dart';
 import 'package:telega2/presentation/providers/emoji_providers.dart';
 
 final _logger = AppLogger.instance;
+final Set<String> _missLogged = <String>{};
 
-/// Widget that renders a single emoji using Telegram-style custom assets
-/// Uses TDLib for animated emojis or bundled assets for static emojis
 class TelegramEmojiWidget extends ConsumerWidget {
-  /// The emoji character to render (e.g., "😀")
-  final String emoji;
-
-  /// Size of the emoji in logical pixels
-  final double size;
-
-  /// Whether to play animations (for animated emojis)
-  final bool animated;
-
-  /// Optional tap callback
-  final VoidCallback? onTap;
-
   const TelegramEmojiWidget({
     super.key,
     required this.emoji,
@@ -32,147 +18,84 @@ class TelegramEmojiWidget extends ConsumerWidget {
     this.onTap,
   });
 
+  final String emoji;
+  final double size;
+  final bool animated;
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Convert emoji character to codepoint for asset lookup
-    final codepoint = emojiCharToCodepoint(emoji);
-    final assetKey = '$codepoint:${animated ? 'true' : 'false'}';
+    final tile = EmojiCatalog.find(emoji);
+    if (tile == null) {
+      if (_missLogged.add(emoji)) {
+        final codepoints = emoji.runes
+            .map((r) => 'U+${r.toRadixString(16).toUpperCase()}')
+            .join(' ');
+        _logger.warning('emoji.catalog.miss emoji="$emoji" codepoints=$codepoints');
+      }
+      return SizedBox(width: size, height: size);
+    }
 
-    final assetPath = ref.watch(emojiAssetPathProvider(assetKey));
-
-    // Debug logging
-    assetPath.whenData((path) {
-      _logger.debug(
-        'Emoji asset: emoji="$emoji" codepoint=$codepoint path=$path',
-      );
-    });
-
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
+    final sheet = ref.watch(emojiSheetProvider(tile.sprite));
+    final body = sheet.when(
+      data: (img) => SizedBox(
         width: size,
         height: size,
-        child: assetPath.when(
-          data: (path) => _buildEmoji(path),
-          loading: () => _buildLoading(),
-          error: (_, _) => _buildError(),
+        child: CustomPaint(
+          painter: _EmojiTilePainter(image: img, tile: tile),
         ),
       ),
-    );
-  }
-
-  Widget _buildEmoji(String? path) {
-    if (path == null) {
-      _logger.debug('Emoji _buildEmoji: path is null');
-      return _buildError();
-    }
-
-    final file = File(path);
-
-    // Check file extension for animation type
-    if (path.endsWith('.tgs') && animated) {
-      return _buildLottieEmoji(file);
-    } else if (path.endsWith('.webp') || path.endsWith('.png')) {
-      return _buildImageEmoji(file);
-    } else if (path.endsWith('.json')) {
-      return _buildLottieEmoji(file);
-    } else {
-      _logger.debug('Emoji _buildEmoji: unknown extension for $path');
-      return _buildError();
-    }
-  }
-
-  Widget _buildLottieEmoji(File file) {
-    // TGS files are gzip-compressed Lottie JSON
-    if (file.path.endsWith('.tgs')) {
-      return FutureBuilder<List<int>>(
-        future: _decompressTgs(file),
-        builder: (context, snapshot) {
-          if (snapshot.hasData) {
-            return Lottie.memory(
-              Uint8List.fromList(snapshot.data!),
-              width: size,
-              height: size,
-              fit: BoxFit.contain,
-              repeat: true,
-              animate: animated,
-              errorBuilder: (context, error, stackTrace) {
-                _logger.error('Lottie error for ${file.path}', error: error);
-                return _buildError();
-              },
-            );
-          }
-          if (snapshot.hasError) {
-            _logger.error(
-              'TGS decompress error for ${file.path}',
-              error: snapshot.error,
-            );
-            return _buildError();
-          }
-          return _buildLoading();
-        },
-      );
-    }
-
-    return Lottie.file(
-      file,
-      width: size,
-      height: size,
-      fit: BoxFit.contain,
-      repeat: true,
-      animate: animated,
-      errorBuilder: (context, error, stackTrace) => _buildError(),
-    );
-  }
-
-  Future<List<int>> _decompressTgs(File file) async {
-    final bytes = await file.readAsBytes();
-    return GZipCodec().decode(bytes);
-  }
-
-  Widget _buildImageEmoji(File file) {
-    return Image.file(
-      file,
-      width: size,
-      height: size,
-      fit: BoxFit.contain,
-      errorBuilder: (context, error, stackTrace) {
-        _logger.error('Emoji Image.file error for ${file.path}', error: error);
-        return _buildError();
+      loading: () => SizedBox(width: size, height: size),
+      error: (e, st) {
+        _logger.error(
+          'emoji.atlas.load_failed sprite=${tile.sprite}',
+          error: e,
+          stackTrace: st,
+        );
+        return SizedBox(width: size, height: size);
       },
     );
-  }
 
-  Widget _buildLoading() {
-    return Center(
-      child: SizedBox(
-        width: size * 0.5,
-        height: size * 0.5,
-        child: const CircularProgressIndicator(strokeWidth: 2),
-      ),
-    );
-  }
-
-  Widget _buildError() {
-    // Show a placeholder box when asset not available
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: Colors.grey.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(4),
-      ),
-    );
+    if (onTap == null) return body;
+    return GestureDetector(onTap: onTap, child: body);
   }
 }
 
-/// Static version of TelegramEmojiWidget for synchronous rendering
-class StaticEmojiWidget extends StatelessWidget {
-  final String emoji;
-  final double size;
-  final String? assetPath;
-  final bool animated;
+class _EmojiTilePainter extends CustomPainter {
+  _EmojiTilePainter({required this.image, required this.tile});
 
+  final ui.Image image;
+  final EmojiTile tile;
+
+  static final Paint _paint = Paint()
+    ..filterQuality = FilterQuality.medium
+    ..isAntiAlias = true;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final src = Rect.fromLTWH(
+      tile.col * kEmojiTilePx.toDouble(),
+      tile.row * kEmojiTilePx.toDouble(),
+      kEmojiTilePx.toDouble(),
+      kEmojiTilePx.toDouble(),
+    );
+    final dst = Rect.fromLTWH(0, 0, size.width, size.height);
+    canvas.drawImageRect(image, src, dst, _paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _EmojiTilePainter old) {
+    return old.image != image ||
+        old.tile.sprite != tile.sprite ||
+        old.tile.row != tile.row ||
+        old.tile.col != tile.col;
+  }
+}
+
+/// Static-context (non-Riverpod) wrapper retained for legacy call sites
+/// that pre-resolve the asset path. The new pipeline ignores [assetPath]
+/// and always renders through the catalog.
+class StaticEmojiWidget extends StatelessWidget {
   const StaticEmojiWidget({
     super.key,
     required this.emoji,
@@ -181,42 +104,18 @@ class StaticEmojiWidget extends StatelessWidget {
     this.animated = true,
   });
 
+  final String emoji;
+  final double size;
+  final String? assetPath;
+  final bool animated;
+
   @override
   Widget build(BuildContext context) {
-    if (assetPath == null) {
-      return _buildPlaceholder();
-    }
-
-    final file = File(assetPath!);
-
-    if (assetPath!.endsWith('.tgs') || assetPath!.endsWith('.json')) {
-      return Lottie.file(
-        file,
-        width: size,
-        height: size,
-        fit: BoxFit.contain,
-        repeat: true,
-        animate: animated,
-        errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
-      );
-    }
-
-    return Image.file(
-      file,
-      width: size,
-      height: size,
-      fit: BoxFit.contain,
-      errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
-    );
-  }
-
-  Widget _buildPlaceholder() {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: Colors.grey.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(4),
+    return Consumer(
+      builder: (context, ref, _) => TelegramEmojiWidget(
+        emoji: emoji,
+        size: size,
+        animated: animated,
       ),
     );
   }

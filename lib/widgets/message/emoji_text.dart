@@ -79,7 +79,7 @@ class EmojiText extends ConsumerWidget {
 
   Widget _buildLargeEmojiOnly(int count) {
     // Display large emojis when message is only emojis
-    final emojis = findEmojis(text).map((m) => m.group(0)!).toList();
+    final emojis = findEmojis(text);
     final largeSize = _getLargeEmojiSize(count);
 
     return Wrap(
@@ -132,6 +132,7 @@ class EmojiText extends ConsumerWidget {
       } else {
         spans.add(TextSpan(text: segment.text, style: effectiveStyle));
       }
+
     }
 
     if (selectable) {
