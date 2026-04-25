@@ -7,6 +7,8 @@ import '../../presentation/providers/app_providers.dart';
 import '../../presentation/providers/telegram_client_provider.dart';
 import '../common/state_widgets.dart';
 import '../chat/chat_picker_sheet.dart';
+import 'album_grouping.dart';
+import 'album_message_bubble.dart';
 import 'message_bubble.dart';
 import 'date_separator.dart';
 import 'reaction_bar.dart';
@@ -212,6 +214,8 @@ class _MessageListState extends ConsumerState<MessageList> {
       _seenIdsCaptured = true;
     }
 
+    final rows = groupAlbums(messages);
+
     return Stack(
       children: [
         Column(
@@ -224,16 +228,16 @@ class _MessageListState extends ConsumerState<MessageList> {
                   controller: _scrollController,
                   reverse: true, // Show newest messages at bottom
                   padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: messages.length,
+                  itemCount: rows.length,
                   itemBuilder: (context, index) {
-                    final message = messages[index];
+                    final row = rows[index];
                     final showDateSeparator = _shouldShowDateSeparator(
-                      messages,
+                      rows,
                       index,
                     );
-                    return _buildMessageRow(
+                    return _buildRow(
                       context: context,
-                      message: message,
+                      row: row,
                       showDateSeparator: showDateSeparator,
                     );
                   },
@@ -263,23 +267,41 @@ class _MessageListState extends ConsumerState<MessageList> {
     );
   }
 
-  Widget _buildMessageRow({
+  Widget _buildRow({
     required BuildContext context,
-    required Message message,
+    required MessageRow row,
     required bool showDateSeparator,
   }) {
-    final shouldAnimate = !_seenMessageIds.contains(message.id);
-    if (shouldAnimate) _seenMessageIds.add(message.id);
+    // A row animates iff at least one of its messages has not been seen yet.
+    // For an album that means a freshly-arrived item triggers the entrance
+    // animation for the whole row — desirable, since the visible content
+    // materially changed.
+    final memberIds = switch (row) {
+      SingleMessageRow() => [row.message.id],
+      AlbumRow() => row.messages.map((m) => m.id).toList(),
+    };
+    final shouldAnimate = memberIds.any((id) => !_seenMessageIds.contains(id));
+    if (shouldAnimate) _seenMessageIds.addAll(memberIds);
+
+    final Widget bubble = switch (row) {
+      SingleMessageRow() => MessageBubble(
+          key: ValueKey(row.message.id),
+          message: row.message,
+          showSender: !row.message.isOutgoing,
+          onLongPress: () => _showMessageOptions(context, row.message),
+        ),
+      AlbumRow() => AlbumMessageBubble(
+          key: ValueKey('album-${row.albumId}'),
+          album: row,
+          showSender: !row.messages.first.isOutgoing,
+          onLongPress: (m) => _showMessageOptions(context, m),
+        ),
+    };
 
     final core = Column(
       children: [
-        if (showDateSeparator) DateSeparator(date: message.date),
-        MessageBubble(
-          key: ValueKey(message.id),
-          message: message,
-          showSender: !message.isOutgoing,
-          onLongPress: () => _showMessageOptions(context, message),
-        ),
+        if (showDateSeparator) DateSeparator(date: row.oldest.date),
+        bubble,
       ],
     );
 
@@ -364,25 +386,26 @@ class _MessageListState extends ConsumerState<MessageList> {
     );
   }
 
-  bool _shouldShowDateSeparator(List<Message> messages, int index) {
-    // In reversed list: index 0 = newest (bottom), higher index = older (top)
-    // Show separator when this message starts a new day compared to the next older message
-    if (index == messages.length - 1) {
-      return true; // Always show for oldest message
+  bool _shouldShowDateSeparator(List<MessageRow> rows, int index) {
+    // In reversed list: index 0 = newest (bottom), higher index = older (top).
+    // Show a separator when this row's *oldest* message starts a new day
+    // compared to the *newest* message of the next-older row.
+    if (index == rows.length - 1) {
+      return true; // Always show for the oldest row
     }
 
-    final currentMessage = messages[index];
-    final nextOlderMessage = messages[index + 1];
+    final currentDate = rows[index].oldest.date;
+    final nextOlderDate = rows[index + 1].newest.date;
 
     final currentDay = DateTime(
-      currentMessage.date.year,
-      currentMessage.date.month,
-      currentMessage.date.day,
+      currentDate.year,
+      currentDate.month,
+      currentDate.day,
     );
     final nextOlderDay = DateTime(
-      nextOlderMessage.date.year,
-      nextOlderMessage.date.month,
-      nextOlderMessage.date.day,
+      nextOlderDate.year,
+      nextOlderDate.month,
+      nextOlderDate.day,
     );
 
     return currentDay != nextOlderDay;

@@ -435,6 +435,8 @@ class Message {
   final int? replyToMessageId;
   // Forward attribution
   final String? forwardedFrom;
+  // Album grouping (TDLib media_album_id; null when message is not part of an album)
+  final int? mediaAlbumId;
 
   const Message({
     required this.id,
@@ -455,6 +457,7 @@ class Message {
     this.reactions,
     this.replyToMessageId,
     this.forwardedFrom,
+    this.mediaAlbumId,
   });
 
   Iterable<DownloadableMedia> get downloadables => [
@@ -774,6 +777,20 @@ class Message {
       json['reply_to'] as Map<String, dynamic>?,
     );
 
+    // TDLib serializes int64 media_album_id as a JSON string; tolerate int too.
+    // Treat 0 as absent — TDLib uses 0 when the message is not part of an album.
+    int? parseMediaAlbumId(Object? raw) {
+      if (raw is int) return raw == 0 ? null : raw;
+      if (raw is String) {
+        final parsed = int.tryParse(raw);
+        if (parsed == null || parsed == 0) return null;
+        return parsed;
+      }
+      return null;
+    }
+
+    final mediaAlbumId = parseMediaAlbumId(json['media_album_id']);
+
     return Message(
       id: json['id'] as int,
       chatId: json['chat_id'] as int,
@@ -793,6 +810,7 @@ class Message {
       reactions: reactions,
       replyToMessageId: replyToMessageId,
       forwardedFrom: forwardedFrom,
+      mediaAlbumId: mediaAlbumId,
     );
   }
 
@@ -815,6 +833,7 @@ class Message {
     List<MessageReaction>? reactions,
     int? replyToMessageId,
     String? forwardedFrom,
+    int? mediaAlbumId,
   }) {
     return Message(
       id: id ?? this.id,
@@ -835,6 +854,7 @@ class Message {
       reactions: reactions ?? this.reactions,
       replyToMessageId: replyToMessageId ?? this.replyToMessageId,
       forwardedFrom: forwardedFrom ?? this.forwardedFrom,
+      mediaAlbumId: mediaAlbumId ?? this.mediaAlbumId,
     );
   }
 
