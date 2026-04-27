@@ -66,14 +66,6 @@ class Opacities {
   static const double high = 0.7;
 }
 
-/// Gesture thresholds for interactions.
-class GestureThreshold {
-  GestureThreshold._();
-
-  static const double dismissDrag = 100.0;
-  static const double swipeAction = 80.0;
-}
-
 /// Auth screen specific dimensions.
 class AuthLayout {
   AuthLayout._();

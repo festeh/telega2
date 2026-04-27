@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -114,28 +115,62 @@ class _FullScreenImageViewer extends StatefulWidget {
   State<_FullScreenImageViewer> createState() => _FullScreenImageViewerState();
 }
 
-class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
-  final TransformationController _transformationController =
-      TransformationController();
+class _FullScreenImageViewerState extends State<_FullScreenImageViewer>
+    with SingleTickerProviderStateMixin {
+  static const List<double> _doubleTapScales = [1.0, 2.0];
+
   late final FocusNode _focusNode;
-  double _dragOffset = 0;
+  late final AnimationController _doubleTapController;
+  Animation<double>? _doubleTapAnimation;
+  VoidCallback? _doubleTapListener;
 
   @override
   void initState() {
     super.initState();
-    _focusNode = FocusNode();
-    _focusNode.requestFocus();
+    _focusNode = FocusNode()..requestFocus();
+    _doubleTapController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
   }
 
   @override
   void dispose() {
+    if (_doubleTapListener != null) {
+      _doubleTapAnimation?.removeListener(_doubleTapListener!);
+    }
+    _doubleTapController.dispose();
     _focusNode.dispose();
-    _transformationController.dispose();
     super.dispose();
   }
 
-  void _close() {
-    Navigator.of(context).pop();
+  void _close() => Navigator.of(context).pop();
+
+  void _onDoubleTap(ExtendedImageGestureState state) {
+    final pointerDownPosition = state.pointerDownPosition;
+    final double begin = state.gestureDetails!.totalScale!;
+    final double end = (begin == _doubleTapScales[0])
+        ? _doubleTapScales[1]
+        : _doubleTapScales[0];
+
+    if (_doubleTapListener != null) {
+      _doubleTapAnimation?.removeListener(_doubleTapListener!);
+    }
+    _doubleTapController
+      ..stop()
+      ..reset();
+
+    _doubleTapAnimation = _doubleTapController.drive(
+      Tween<double>(begin: begin, end: end),
+    );
+    _doubleTapListener = () {
+      state.handleDoubleTap(
+        scale: _doubleTapAnimation!.value,
+        doubleTapPosition: pointerDownPosition,
+      );
+    };
+    _doubleTapAnimation!.addListener(_doubleTapListener!);
+    _doubleTapController.forward();
   }
 
   @override
@@ -150,39 +185,35 @@ class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
             _close();
           }
         },
-        child: GestureDetector(
-          onTap: _close,
-          onVerticalDragUpdate: (details) {
-            setState(() {
-              _dragOffset += details.delta.dy;
-            });
+        child: ExtendedImageSlidePage(
+          slideAxis: SlideAxis.vertical,
+          slideType: SlideType.onlyImage,
+          slidePageBackgroundHandler: (offset, pageSize) {
+            final double ratio = (offset.dy.abs() / (pageSize.height / 2))
+                .clamp(0.0, 1.0);
+            return Colors.black.withValues(alpha: 1 - ratio);
           },
-          onVerticalDragEnd: (details) {
-            if (_dragOffset.abs() > GestureThreshold.dismissDrag) {
-              _close();
-            } else {
-              setState(() {
-                _dragOffset = 0;
-              });
-            }
-          },
-          child: Container(
-            color: Colors.black.withValues(
-              alpha: (1 - (_dragOffset.abs() / 300)).clamp(0.7, 1.0),
-            ),
+          child: GestureDetector(
+            onTap: _close,
             child: Stack(
+              fit: StackFit.expand,
               children: [
                 Center(
-                  child: Transform.translate(
-                    offset: Offset(0, _dragOffset),
-                    child: InteractiveViewer(
-                      transformationController: _transformationController,
-                      minScale: 0.5,
+                  child: ExtendedImage.file(
+                    File(widget.imagePath),
+                    fit: BoxFit.contain,
+                    mode: ExtendedImageMode.gesture,
+                    enableSlideOutPage: true,
+                    onDoubleTap: _onDoubleTap,
+                    initGestureConfigHandler: (state) => GestureConfig(
+                      minScale: 1.0,
                       maxScale: 4.0,
-                      child: Image.file(
-                        File(widget.imagePath),
-                        fit: BoxFit.contain,
-                      ),
+                      animationMinScale: 0.9,
+                      animationMaxScale: 4.5,
+                      initialScale: 1.0,
+                      inPageView: false,
+                      cacheGesture: false,
+                      initialAlignment: InitialAlignment.center,
                     ),
                   ),
                 ),

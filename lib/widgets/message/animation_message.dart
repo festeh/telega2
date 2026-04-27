@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -270,7 +271,7 @@ class _FullScreenAnimationState extends State<_FullScreenAnimation> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.transparent,
       body: KeyboardListener(
         focusNode: _focusNode,
         onKeyEvent: (event) {
@@ -279,36 +280,47 @@ class _FullScreenAnimationState extends State<_FullScreenAnimation> {
             _close();
           }
         },
-        child: GestureDetector(
-          onTap: _close,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Center(
-                child: _isInitialized
-                    ? Video(
-                        controller: _videoController,
-                        controls: NoVideoControls,
-                      )
-                    : const CircularProgressIndicator(color: Colors.white),
-              ),
-              SafeArea(
-                child: Align(
-                  alignment: Alignment.topRight,
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: IconButton(
-                      onPressed: _close,
-                      icon: const Icon(
-                        Icons.close,
-                        color: Colors.white,
-                        size: 28,
+        child: ExtendedImageSlidePage(
+          slideAxis: SlideAxis.vertical,
+          slideType: SlideType.onlyImage,
+          slidePageBackgroundHandler: (offset, pageSize) {
+            final double ratio = (offset.dy.abs() / (pageSize.height / 2))
+                .clamp(0.0, 1.0);
+            return Colors.black.withValues(alpha: 1 - ratio);
+          },
+          child: GestureDetector(
+            onTap: _close,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Center(
+                  child: ExtendedImageSlidePageHandler(
+                    child: _isInitialized
+                        ? Video(
+                            controller: _videoController,
+                            controls: NoVideoControls,
+                          )
+                        : const CircularProgressIndicator(color: Colors.white),
+                  ),
+                ),
+                SafeArea(
+                  child: Align(
+                    alignment: Alignment.topRight,
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: IconButton(
+                        onPressed: _close,
+                        icon: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 28,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

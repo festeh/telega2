@@ -48,6 +48,7 @@ dependencies:
   url_launcher: ^6.2.5
   photo_manager: ^3.5.0
   photo_manager_image_provider: ^2.2.0
+  extended_image: ^10.0.1
 
 dev_dependencies:
   flutter_test:
