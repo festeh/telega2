@@ -11,6 +11,8 @@
 // Run: `dart run tool/emoji/generate_catalog.dart`.
 // Re-run whenever assets/emoji/emoji.txt is bumped from tdesktop.
 
+// ignore_for_file: avoid_print
+
 import 'dart:io';
 
 const int kPostfix = 0xFE0F;
@@ -129,17 +131,17 @@ InputId? _findFirstColored(EmojiFile file, String colored) {
   return stringToInputId(line[1]);
 }
 
-class _DoubleColored {
+class DoubleColored {
   final InputId original;
   final InputId same;
   final InputId different;
-  _DoubleColored(this.original, this.same, this.different);
+  DoubleColored(this.original, this.same, this.different);
 }
 
-_DoubleColored? _findDoubleColored(EmojiFile file, String colored) {
+DoubleColored? _findDoubleColored(EmojiFile file, String colored) {
   final line = _findColoredLine(file, colored);
   if (line == null || line.length != 26) return null;
-  return _DoubleColored(
+  return DoubleColored(
     stringToInputId(line[0]),
     stringToInputId(line[1]),
     stringToInputId(line[2]),
@@ -150,7 +152,7 @@ class InputData {
   final List<List<InputId>> categories;
   final List<InputId> other;
   final List<InputId> colored;
-  final List<_DoubleColored> doubleColored;
+  final List<DoubleColored> doubleColored;
   InputData(this.categories, this.other, this.colored, this.doubleColored);
 }
 
@@ -175,7 +177,7 @@ InputData readData(EmojiFile file) {
     }
   }
 
-  final doubleColored = <_DoubleColored>[];
+  final doubleColored = <DoubleColored>[];
   if (file.sections[2].length > 1) {
     for (final line in file.sections[2][1]) {
       for (final s in line) {
@@ -251,7 +253,7 @@ Set<String> fillVariatedIds(List<InputId> colored) {
   return result;
 }
 
-Map<String, InputId> fillDoubleVariatedIds(List<_DoubleColored> entries) {
+Map<String, InputId> fillDoubleVariatedIds(List<DoubleColored> entries) {
   final result = <String, InputId>{};
   for (final e in entries) {
     final originalBare = bareIdFromInput(e.original);
@@ -437,7 +439,7 @@ void main(List<String> args) {
 
   print('flat list: ${state.list.length} entries (max ${kSheetCount * kPerSheet})');
   if (state.list.length > kSheetCount * kPerSheet) {
-    throw StateError('catalog overflows ${kSheetCount} atlas sheets');
+    throw StateError('catalog overflows $kSheetCount atlas sheets');
   }
 
   final highestSprite = (state.list.length - 1) ~/ kPerSheet;
