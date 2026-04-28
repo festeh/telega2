@@ -11,7 +11,7 @@ class TdlibLogger {
 
   void logRequest(Map<String, dynamic> request, {String? requestId}) {
     _logger.tdlibLog(
-      Level.debug,
+      Level.trace,
       'TDLib Request: ${request['@type']}',
       requestId: requestId,
       metadata: {
@@ -23,7 +23,7 @@ class TdlibLogger {
 
   void logResponse(Map<String, dynamic> response, {String? requestId}) {
     _logger.tdlibLog(
-      Level.debug,
+      Level.trace,
       'TDLib Response: ${response['@type']}',
       requestId: requestId,
       metadata: {
@@ -36,7 +36,7 @@ class TdlibLogger {
   void logUpdate(Map<String, dynamic> update) {
     final updateType = update['@type'] as String;
     _logger.tdlibLog(
-      Level.info,
+      Level.trace,
       'TDLib Update: $updateType',
       metadata: {
         'update_type': updateType,

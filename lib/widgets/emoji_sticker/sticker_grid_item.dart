@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lottie/lottie.dart';
+import '../../core/logging/app_logger.dart';
 import '../../domain/entities/sticker.dart';
 import '../../data/repositories/tdlib_telegram_client.dart';
 import '../../presentation/providers/app_providers.dart';
@@ -127,7 +128,11 @@ class _StickerGridItemState extends ConsumerState<StickerGridItem> {
         }
       }
     } catch (e) {
-      debugPrint('Error loading sticker: $e');
+      AppLogger.instance.warning(
+        'Error loading sticker: $e',
+        context: const LogContext(module: LogModule.ui),
+        error: e,
+      );
       if (mounted) {
         setState(() {
           _loadError = true;

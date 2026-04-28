@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import '../../core/constants/ui_constants.dart';
+import '../../core/logging/app_logger.dart';
 import 'media_placeholder.dart';
 
 class StickerMessageWidget extends StatefulWidget {
@@ -65,7 +66,11 @@ class _StickerMessageWidgetState extends State<StickerMessageWidget> {
         });
       }
     } catch (e) {
-      debugPrint('Error loading TGS sticker: $e');
+      AppLogger.instance.warning(
+        'Error loading TGS sticker: $e',
+        context: const LogContext(module: LogModule.ui),
+        error: e,
+      );
       if (mounted) {
         setState(() => _loadError = true);
       }

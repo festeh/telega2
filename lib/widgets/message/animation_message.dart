@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import '../../core/constants/ui_constants.dart';
+import '../../core/logging/app_logger.dart';
 import '../../presentation/providers/download_progress_provider.dart';
 import '../common/circular_download_progress.dart';
 import 'media_error.dart';
@@ -80,7 +81,10 @@ class _AnimationMessageWidgetState
 
     _errorSub = player.stream.error.listen((err) {
       if (!mounted || err.isEmpty) return;
-      debugPrint('Error initializing animation: $err');
+      AppLogger.instance.warning(
+        'Error initializing animation: $err',
+        context: const LogContext(module: LogModule.ui),
+      );
       setState(() => _initError = err);
     });
 
