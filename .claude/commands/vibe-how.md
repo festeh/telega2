@@ -18,22 +18,22 @@ Define HOW to build what's in the spec. Create a concrete implementation plan.
 
 **Use `/plain-language` skill while writing.**
 
-**Follow `specs/IMPLEMENTATION.md` rules if present.**
+**Follow `arch/specs/IMPLEMENTATION.md` rules if present.**
 
 ## Steps
 
 1. **Get current branch** using `git branch --show-current`.
    - If on `main` or `master`: Ask user to create a feature branch first (suggest `vc branch <description>`).
 
-2. **Read the spec** from `specs/<branch>/spec.md`.
+2. **Read the spec** from `arch/specs/<branch>/spec.md`.
    - If no spec: Run `/vibe-what` first.
 
-3. **Create plan file** at `specs/<branch>/plan.md`:
+3. **Create plan file** at `arch/specs/<branch>/plan.md`:
 
 ```markdown
 # Plan: [Feature Name]
 
-**Spec**: specs/<branch>/spec.md
+**Spec**: arch/specs/<branch>/spec.md
 
 ## Tech Stack
 
@@ -83,13 +83,13 @@ What could go wrong:
 ## Example
 
 Branch: `003-password-reset`
-Spec: `specs/003-password-reset/spec.md`
+Spec: `arch/specs/003-password-reset/spec.md`
 
-Output (`specs/003-password-reset/plan.md`):
+Output (`arch/specs/003-password-reset/plan.md`):
 ```markdown
 # Plan: Password Reset
 
-**Spec**: specs/003-password-reset/spec.md
+**Spec**: arch/specs/003-password-reset/spec.md
 
 ## Tech Stack
 

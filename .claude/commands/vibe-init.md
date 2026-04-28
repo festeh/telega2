@@ -23,4 +23,4 @@ Set up project-level implementation rules by selecting from global config.
 
 3. **For rules that say "If included:"**, scan the repo to fill in project-specific details.
 
-4. **Write `specs/IMPLEMENTATION.md`** with selected rules. Overwrite if exists.
+4. **Write `arch/specs/IMPLEMENTATION.md`** with selected rules. Overwrite if exists.

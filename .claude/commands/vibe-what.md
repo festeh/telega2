@@ -26,7 +26,7 @@ Define WHAT to build. Skip implementation details (no specific frameworks, datab
 2. **Get current branch** using `git branch --show-current`.
    - If on `main` or `master`: Ask user to create a feature branch first (suggest `vc branch <description>`).
 
-3. **Create spec file** at `specs/<branch>/spec.md`:
+3. **Create spec file** at `arch/specs/<branch>/spec.md`:
 
 ```markdown
 # [Feature Name]
@@ -64,7 +64,7 @@ Define WHAT to build. Skip implementation details (no specific frameworks, datab
 Branch: `003-password-reset`
 Input: "Users should be able to reset their password"
 
-Output (`specs/003-password-reset/spec.md`):
+Output (`arch/specs/003-password-reset/spec.md`):
 ```markdown
 # Password Reset
 
