@@ -228,6 +228,23 @@ class TdlibTelegramClient implements TelegramClientRepository {
       _logger.logResponse({'@type': 'DEBUG_sticker_type_found', 'type': type});
     }
 
+    // Debug log for any reaction-related types so we can spot unhandled
+    // variants (e.g. messageAvailableReactions vs availableReactions) when
+    // diagnosing missing reaction UI.
+    if (type.toLowerCase().contains('eaction')) {
+      _logger.logResponse({
+        '@type': 'DEBUG_reaction_type_found',
+        'type': type,
+        'keys': update.keys.toList(),
+        'has_top_reactions': update.containsKey('top_reactions'),
+        'has_recent_reactions': update.containsKey('recent_reactions'),
+        'has_popular_reactions': update.containsKey('popular_reactions'),
+        'top_count': (update['top_reactions'] as List?)?.length,
+        'recent_count': (update['recent_reactions'] as List?)?.length,
+        'popular_count': (update['popular_reactions'] as List?)?.length,
+      });
+    }
+
     if (type == TdlibUpdateTypes.authorizationState) {
       final authState = AuthenticationState.fromJson(
         update['authorization_state'],
@@ -1702,6 +1719,30 @@ class TdlibTelegramClient implements TelegramClientRepository {
   }
 
   @override
+  Future<void> openChat(int chatId) async {
+    try {
+      await _sendRequest({
+        '@type': 'openChat',
+        'chat_id': chatId,
+      });
+    } catch (e) {
+      _logger.logError('Failed to open chat $chatId', error: e);
+    }
+  }
+
+  @override
+  Future<void> closeChat(int chatId) async {
+    try {
+      await _sendRequest({
+        '@type': 'closeChat',
+        'chat_id': chatId,
+      });
+    } catch (e) {
+      _logger.logError('Failed to close chat $chatId', error: e);
+    }
+  }
+
+  @override
   Future<bool> deleteMessage(int chatId, int messageId) async {
     try {
       await _sendRequest({
@@ -1793,6 +1834,11 @@ class TdlibTelegramClient implements TelegramClientRepository {
       // If there's already a pending request, reuse it
       if (_availableReactionsCompleter != null &&
           !_availableReactionsCompleter!.isCompleted) {
+        _logger.logResponse({
+          '@type': 'DEBUG_getAvailableReactions_reusing_inflight',
+          'chat_id': chatId,
+          'message_id': messageId,
+        });
         return _availableReactionsCompleter!.future;
       }
 
@@ -1811,19 +1857,33 @@ class TdlibTelegramClient implements TelegramClientRepository {
         'row_size': 8,
       });
 
-      // Wait for response with timeout
-      final result = await _availableReactionsCompleter!.future.timeout(
+      // Wait for response with timeout. Use a sentinel to distinguish
+      // a legitimate empty reply from a timeout.
+      const timeoutSentinel = <String>['__TIMEOUT__'];
+      final raw = await _availableReactionsCompleter!.future.timeout(
         const Duration(seconds: 5),
-        onTimeout: () => <String>[],
+        onTimeout: () => timeoutSentinel,
       );
+
+      if (identical(raw, timeoutSentinel)) {
+        _logger.logResponse({
+          '@type': 'DEBUG_getAvailableReactions_timeout',
+          'chat_id': chatId,
+          'message_id': messageId,
+          'note': 'no availableReactions update arrived within 5s',
+        });
+        return const [];
+      }
 
       _logger.logResponse({
         '@type': 'getMessageAvailableReactions_result',
-        'count': result.length,
-        'emojis': result.take(5).toList(),
+        'chat_id': chatId,
+        'message_id': messageId,
+        'count': raw.length,
+        'emojis': raw.take(5).toList(),
       });
 
-      return result;
+      return raw;
     } catch (e) {
       _logger.logError('Failed to get available reactions', error: e);
       return [];
@@ -1833,13 +1893,18 @@ class TdlibTelegramClient implements TelegramClientRepository {
   void _handleAvailableReactionsResponse(Map<String, dynamic> update) {
     try {
       final emojis = <String>[];
+      var skippedPremium = 0;
+      var skippedNonEmojiType = 0;
 
       // Helper to extract emojis from reaction list
       void extractEmojis(List<dynamic>? reactions) {
         if (reactions == null) return;
         for (final reaction in reactions) {
           // Skip premium reactions
-          if (reaction['needs_premium'] == true) continue;
+          if (reaction['needs_premium'] == true) {
+            skippedPremium++;
+            continue;
+          }
 
           final type = reaction['type'] as Map<String, dynamic>?;
           if (type == null) continue;
@@ -1850,6 +1915,8 @@ class TdlibTelegramClient implements TelegramClientRepository {
             if (emoji != null && !emojis.contains(emoji)) {
               emojis.add(emoji);
             }
+          } else {
+            skippedNonEmojiType++;
           }
         }
       }
@@ -1857,6 +1924,18 @@ class TdlibTelegramClient implements TelegramClientRepository {
       extractEmojis(update['top_reactions'] as List<dynamic>?);
       extractEmojis(update['recent_reactions'] as List<dynamic>?);
       extractEmojis(update['popular_reactions'] as List<dynamic>?);
+
+      _logger.logResponse({
+        '@type': 'DEBUG_availableReactions_parsed',
+        'top_count': (update['top_reactions'] as List?)?.length ?? 0,
+        'recent_count': (update['recent_reactions'] as List?)?.length ?? 0,
+        'popular_count': (update['popular_reactions'] as List?)?.length ?? 0,
+        'extracted_count': emojis.length,
+        'skipped_premium': skippedPremium,
+        'skipped_non_emoji_type': skippedNonEmojiType,
+        'completer_present': _availableReactionsCompleter != null,
+        'completer_completed': _availableReactionsCompleter?.isCompleted,
+      });
 
       if (_availableReactionsCompleter != null &&
           !_availableReactionsCompleter!.isCompleted) {

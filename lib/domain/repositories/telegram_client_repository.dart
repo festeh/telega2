@@ -96,6 +96,15 @@ abstract class TelegramClientRepository {
   Future<void> resendMessages(int chatId, List<int> messageIds);
   Future<void> markAsRead(int chatId, int messageId);
   Future<void> readAllChatReactions(int chatId);
+
+  /// Tells TDLib the user is actively viewing this chat. Required for the
+  /// server to push passive updates like updateMessageInteractionInfo
+  /// (reactions, view counts), updateChatAction (typing indicators), and
+  /// fresh updateUserStatus for participants.
+  Future<void> openChat(int chatId);
+
+  /// Tells TDLib the user has stopped viewing this chat. Pairs with [openChat].
+  Future<void> closeChat(int chatId);
   Future<bool> deleteMessage(int chatId, int messageId);
   Future<Message?> editMessage(int chatId, int messageId, String newText);
 
