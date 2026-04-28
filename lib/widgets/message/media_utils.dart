@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import '../../core/constants/ui_constants.dart';
 
@@ -13,6 +14,22 @@ VideoControllerConfiguration videoControllerConfig() {
     );
   }
   return const VideoControllerConfiguration();
+}
+
+/// Creates a [Player] with platform-appropriate codec settings.
+///
+/// On Linux, libmpv probes VDPAU/CUDA/Vulkan/VAAPI before falling back to
+/// software decoding, spamming stderr on machines without those drivers.
+/// Forcing `hwdec=no` skips the probe and silences the failures.
+Player createPlayer() {
+  final player = Player();
+  if (Platform.isLinux) {
+    final platform = player.platform;
+    if (platform is NativePlayer) {
+      platform.setProperty('hwdec', 'no');
+    }
+  }
+  return player;
 }
 
 /// Calculates display dimensions for media content while maintaining aspect ratio.

@@ -174,7 +174,7 @@ class _FullScreenVideoPlayerState extends State<_FullScreenVideoPlayer> {
     super.initState();
     _focusNode = FocusNode();
     _focusNode.requestFocus();
-    _player = Player();
+    _player = createPlayer();
     _videoController = VideoController(
       _player,
       configuration: videoControllerConfig(),

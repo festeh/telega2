@@ -67,7 +67,7 @@ class _AnimationMessageWidgetState
     final path = widget.animationPath;
     if (path == null || path.isEmpty || _player != null) return;
 
-    final player = Player();
+    final player = createPlayer();
     _player = player;
     _videoController = VideoController(
       player,
@@ -244,7 +244,7 @@ class _FullScreenAnimationState extends State<_FullScreenAnimation> {
     super.initState();
     _focusNode = FocusNode();
     _focusNode.requestFocus();
-    _player = Player();
+    _player = createPlayer();
     _videoController = VideoController(
       _player,
       configuration: videoControllerConfig(),
