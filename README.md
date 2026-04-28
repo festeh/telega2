@@ -177,6 +177,70 @@ This project is for educational and demonstration purposes. Make sure to comply 
 ### Debug Mode
 The application includes debug logging for development. Check the console output for detailed information about TDLib operations and authentication flow.
 
+## Logging
+
+Verbosity is controlled at runtime through the `TELEGA_LOG` environment
+variable. The grammar is `RUST_LOG`-style: a default level plus optional
+per-subsystem overrides, separated by commas.
+
+```
+TELEGA_LOG=<default>[,<module>=<level>]...
+```
+
+### Levels
+
+`trace`, `debug`, `info`, `warning`, `error`, `fatal` — exact names from
+`package:logger`. Calls below `warning` go through the per-module gate; calls
+at `warning` and above always emit, regardless of subsystem level.
+
+### Recognized modules
+
+- `auth` — authentication
+- `bridge` (alias: `tdlib`) — Telegram client library calls and updates
+- `messages` — message pipeline (sends, edits, server-pushed updates)
+- `chats` — chat list pipeline
+- `network` — network layer
+- `storage` — local storage
+- `ui` — widgets and screens
+- `performance` (alias: `perf`) — timing and profiling
+- `general` — anything that doesn't fit the others
+
+### Native bridge level
+
+The TDLib C++ side runs at `fatal` (silent) by default. Raise it with the
+special `bridge.native=<level>` token. Native logs print on a separate path
+with their own format — they are not unified with the Dart logger output.
+
+### Defaults
+
+- Debug builds: default level `info`; native bridge `fatal`
+- Release/profile builds: default level `warning`; native bridge `fatal`
+
+### Examples
+
+```bash
+# Quiet — warnings and errors only.
+TELEGA_LOG=warning flutter run
+
+# Default development view, plus every TDLib request and update.
+TELEGA_LOG=info,bridge=trace flutter run
+
+# Heavy debugging session: messages firehose plus native bridge info.
+TELEGA_LOG=debug,messages=trace,bridge.native=info flutter run
+
+# Investigate one chat update flow without other noise.
+TELEGA_LOG=warning,chats=debug flutter run
+```
+
+### Notes
+
+- The variable is read once at app startup. Hot **restart** picks up a new
+  value; hot **reload** does not — it preserves logger state.
+- An invalid level or module name is ignored with a single warning at startup;
+  the rest of the expression still applies.
+- On mobile platforms env access at launch is limited; logging falls back to
+  the build-mode defaults there.
+
 ## Acknowledgments
 
 - [TDLib](https://github.com/tdlib/td) - Telegram Database Library

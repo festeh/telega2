@@ -1,4 +1,14 @@
-enum LogModule { auth, tdlib, network, storage, ui, performance, general }
+enum LogModule {
+  auth,
+  tdlib,
+  messages,
+  chats,
+  network,
+  storage,
+  ui,
+  performance,
+  general,
+}
 
 extension LogModuleExtension on LogModule {
   String get name {
@@ -7,6 +17,10 @@ extension LogModuleExtension on LogModule {
         return 'AUTH';
       case LogModule.tdlib:
         return 'TDLIB';
+      case LogModule.messages:
+        return 'MESSAGES';
+      case LogModule.chats:
+        return 'CHATS';
       case LogModule.network:
         return 'NETWORK';
       case LogModule.storage:

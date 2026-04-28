@@ -14,7 +14,7 @@ const _lastSelectedChatKey = 'last_selected_chat_id';
 class MessageNotifier extends AsyncNotifier<MessageState> {
   TelegramClientRepository get _client => ref.read(telegramClientProvider);
   StreamSubscription<MessageEvent>? _eventSubscription;
-  final AppLogger _logger = AppLogger.instance;
+  final ScopedLogger _logger = AppLogger.instance.scoped(LogModule.messages);
 
   MessageState get _currentState => state.value ?? MessageState.initial();
 
@@ -133,7 +133,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
   }
 
   void _handleMessagePhotoUpdated(int chatId, int messageId, String photoPath) {
-    _logger.debug('Message photo updated in chat $chatId: $messageId');
+    _logger.trace('Message photo updated in chat $chatId: $messageId');
     final currentState = state.value;
     if (currentState == null) return;
 
@@ -156,7 +156,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
     int messageId,
     String stickerPath,
   ) {
-    _logger.debug('Message sticker updated in chat $chatId: $messageId');
+    _logger.trace('Message sticker updated in chat $chatId: $messageId');
     final currentState = state.value;
     if (currentState == null) return;
 
@@ -175,7 +175,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
   }
 
   void _handleMessageVideoUpdated(int chatId, int messageId, String videoPath) {
-    _logger.debug('Message video updated in chat $chatId: $messageId');
+    _logger.trace('Message video updated in chat $chatId: $messageId');
     final currentState = state.value;
     if (currentState == null) return;
 
@@ -198,7 +198,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
     int messageId,
     String animationPath,
   ) {
-    _logger.debug('Message animation updated in chat $chatId: $messageId');
+    _logger.trace('Message animation updated in chat $chatId: $messageId');
     final currentState = state.value;
     if (currentState == null) return;
 
@@ -221,7 +221,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
     int messageId,
     String documentPath,
   ) {
-    _logger.debug('Message document updated in chat $chatId: $messageId');
+    _logger.trace('Message document updated in chat $chatId: $messageId');
     final currentState = state.value;
     if (currentState == null) return;
 
@@ -244,7 +244,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
     int messageId,
     List<MessageReaction> reactions,
   ) {
-    _logger.debug('Message reactions updated in chat $chatId: $messageId');
+    _logger.trace('Message reactions updated in chat $chatId: $messageId');
     final currentState = state.value;
     if (currentState == null) return;
 
@@ -261,7 +261,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
   }
 
   void _handleChatReadOutbox(int chatId, int lastReadOutboxMessageId) {
-    _logger.debug(
+    _logger.trace(
       'Chat $chatId: outbox read up to message $lastReadOutboxMessageId',
     );
     final currentState = state.value;
@@ -287,7 +287,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
   }
 
   void _handleNewMessage(int chatId, Message message) {
-    _logger.debug('New message received for chat $chatId');
+    _logger.trace('New message received for chat $chatId');
     _downloadMessageMedia([message]);
     final currentState = state.value;
     if (currentState != null) {
@@ -300,7 +300,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
           currentState.messagesByChat[chatId],
           newState.messagesByChat[chatId],
         );
-        _logger.debug(
+        _logger.trace(
           'NEW_MSG_DIAG chat=$chatId msgId=${message.id}: '
           'statesEqual=$statesEqual '
           'mapsIdentical=$mapsIdentical '
@@ -314,7 +314,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
   }
 
   void _handleMessageEdited(int chatId, Message message) {
-    _logger.debug('Message edited in chat $chatId: ${message.id}');
+    _logger.trace('Message edited in chat $chatId: ${message.id}');
     final currentState = state.value;
     if (currentState != null) {
       state = AsyncData(currentState.updateMessage(chatId, message));
@@ -322,7 +322,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
   }
 
   void _handleMessagesDeleted(int chatId, List<int> messageIds) {
-    _logger.debug('Messages deleted in chat $chatId: $messageIds');
+    _logger.trace('Messages deleted in chat $chatId: $messageIds');
     final currentState = state.value;
     if (currentState != null) {
       var newState = currentState;
@@ -338,7 +338,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
     int messageId,
     Map<String, dynamic> newContent,
   ) {
-    _logger.debug('Message content changed in chat $chatId: $messageId');
+    _logger.trace('Message content changed in chat $chatId: $messageId');
     // Content update handling - placeholder until Message supports content updates
     final currentState = state.value;
     if (currentState != null &&
@@ -357,7 +357,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
     Message message,
     int oldMessageId,
   ) {
-    _logger.debug(
+    _logger.trace(
       'Message send succeeded for chat $chatId: ${message.id} (was: $oldMessageId)',
     );
     final currentState = state.value;
@@ -431,7 +431,7 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
   }
 
   void _handleMessagesBatch(int chatId, List<Message> messages) {
-    _logger.debug(
+    _logger.trace(
       'Received batch of ${messages.length} messages for chat $chatId',
     );
     final currentState = state.value;

@@ -11,7 +11,7 @@ import '../../core/config/app_config.dart';
 class ChatNotifier extends AsyncNotifier<ChatState> {
   TelegramClientRepository get _client => ref.read(telegramClientProvider);
   StreamSubscription<ChatEvent>? _eventSubscription;
-  final AppLogger _logger = AppLogger.instance;
+  final ScopedLogger _logger = AppLogger.instance.scoped(LogModule.chats);
   Timer? _sortDebounceTimer;
   bool _needsSort = false;
 
@@ -92,7 +92,7 @@ class ChatNotifier extends AsyncNotifier<ChatState> {
   }
 
   void _handleChatAdded(Chat chat) {
-    _logger.debug('New chat received: ${chat.title} (ID: ${chat.id})');
+    _logger.trace('New chat received: ${chat.title} (ID: ${chat.id})');
 
     // Trigger photo download if needed
     _downloadChatPhoto(chat);
@@ -153,7 +153,7 @@ class ChatNotifier extends AsyncNotifier<ChatState> {
   void _downloadChatPhoto(Chat chat) {
     if (chat.photoFileId != null &&
         (chat.photoPath == null || chat.photoPath!.isEmpty)) {
-      _logger.debug(
+      _logger.trace(
         'Requesting photo download for chat ${chat.title} (fileId: ${chat.photoFileId})',
       );
       _client.downloadFile(chat.photoFileId!);
