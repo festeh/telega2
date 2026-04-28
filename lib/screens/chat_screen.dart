@@ -11,13 +11,35 @@ import '../widgets/message/message_input_area.dart';
 import '../widgets/chat_export/chat_export_dialog.dart';
 import '../presentation/providers/chat_export_provider.dart';
 
-class ChatScreen extends ConsumerWidget {
+class ChatScreen extends ConsumerStatefulWidget {
   final Chat chat;
 
   const ChatScreen({super.key, required this.chat});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends ConsumerState<ChatScreen> {
+  // openChat tells TDLib the user is viewing this chat so the server pushes
+  // passive updates (reactions, typing, presence). Without it,
+  // updateMessageInteractionInfo never arrives for other users' reactions.
+  @override
+  void initState() {
+    super.initState();
+    ref.read(telegramClientProvider).openChat(widget.chat.id);
+  }
+
+  @override
+  void dispose() {
+    ref.read(telegramClientProvider).closeChat(widget.chat.id);
+    super.dispose();
+  }
+
+  Chat get chat => widget.chat;
+
+  @override
+  Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final tokens = Theme.of(context).extension<TelegaTokens>()!;
     final chatBg = tokens.chatBackground.resolve(colorScheme);
