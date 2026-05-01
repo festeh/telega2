@@ -493,13 +493,13 @@ class _MessageListState extends ConsumerState<MessageList> {
                         .resendMessage(widget.chat.id, message.id);
                   },
                 ),
-              if (message.isOutgoing)
+              if (message.isOutgoing && message.type == MessageType.text)
                 ListTile(
                   leading: const Icon(Icons.edit),
                   title: const Text('Edit'),
                   onTap: () {
                     Navigator.pop(context);
-                    _editMessage(message);
+                    ref.read(messageProvider.notifier).startEditing(message);
                   },
                 ),
               ListTile(
@@ -546,48 +546,6 @@ class _MessageListState extends ConsumerState<MessageList> {
         ),
       ),
     );
-  }
-
-  void _editMessage(Message message) {
-    final textController = TextEditingController(text: message.content);
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Edit Message'),
-        content: TextFormField(
-          controller: textController,
-          decoration: const InputDecoration(hintText: 'Enter new message...'),
-          autofocus: true,
-          onFieldSubmitted: (newText) {
-            if (newText.trim().isNotEmpty) {
-              ref
-                  .read(messageProvider.notifier)
-                  .editMessage(widget.chat.id, message.id, newText.trim());
-            }
-            Navigator.pop(dialogContext);
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              final newText = textController.text.trim();
-              if (newText.isNotEmpty && newText != message.content) {
-                ref
-                    .read(messageProvider.notifier)
-                    .editMessage(widget.chat.id, message.id, newText);
-              }
-              Navigator.pop(dialogContext);
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    ).then((_) => textController.dispose());
   }
 
   void _deleteMessage(Message message) {
