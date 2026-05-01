@@ -8,7 +8,9 @@ import '../domain/entities/chat.dart';
 import 'chat_helpers.dart';
 import '../widgets/message/message_list.dart';
 import '../widgets/message/message_input_area.dart';
+import '../widgets/message/message_edit_bar.dart';
 import '../widgets/chat_export/chat_export_dialog.dart';
+import '../presentation/providers/app_providers.dart';
 import '../presentation/providers/chat_export_provider.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
@@ -44,6 +46,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final tokens = Theme.of(context).extension<TelegaTokens>()!;
     final chatBg = tokens.chatBackground.resolve(colorScheme);
 
+    final editingMessage = ref.watch(
+      messageProvider.select((s) => s.value?.editingMessage),
+    );
+
     return Scaffold(
       appBar: _buildAppBar(context, ref, colorScheme),
       body: SafeArea(
@@ -56,7 +62,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 child: MessageList(chat: chat),
               ),
             ),
-            if (chat.canSendMessages) MessageInputArea(chat: chat),
+            if (chat.canSendMessages)
+              editingMessage != null
+                  ? MessageEditBar(
+                      key: ValueKey('edit-${editingMessage.id}'),
+                      chatId: chat.id,
+                      message: editingMessage,
+                    )
+                  : MessageInputArea(chat: chat),
           ],
         ),
       ),

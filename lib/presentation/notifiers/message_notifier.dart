@@ -572,6 +572,10 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
     try {
       await _client.editMessage(chatId, messageId, newText);
       _logger.debug('Message edited in chat $chatId: $messageId');
+      final currentState = state.value;
+      if (currentState != null && currentState.editingMessage?.id == messageId) {
+        state = AsyncData(currentState.clearEditing());
+      }
     } catch (e) {
       _logger.error(
         'Failed to edit message $messageId in chat $chatId',
@@ -784,6 +788,18 @@ class MessageNotifier extends AsyncNotifier<MessageState> {
     final currentState = state.value;
     if (currentState != null) {
       state = AsyncData(currentState.clearReplyingTo());
+    }
+  }
+
+  // Edit management
+  void startEditing(Message message) {
+    state = AsyncData(_currentState.setEditing(message));
+  }
+
+  void cancelEditing() {
+    final currentState = state.value;
+    if (currentState != null) {
+      state = AsyncData(currentState.clearEditing());
     }
   }
 

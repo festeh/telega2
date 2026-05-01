@@ -9,6 +9,7 @@ import '../../domain/entities/media_item.dart';
 import '../../presentation/providers/app_providers.dart';
 import '../emoji_sticker/emoji_sticker_picker.dart';
 import 'media_picker/media_picker_panel.dart';
+import 'message_text_input.dart';
 
 class MessageInputArea extends ConsumerStatefulWidget {
   final Chat chat;
@@ -23,19 +24,16 @@ class _MessageInputAreaState extends ConsumerState<MessageInputArea>
     with WidgetsBindingObserver {
   final TextEditingController _textController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
-  bool _isMultiline = false;
 
   @override
   void initState() {
     super.initState();
-    _textController.addListener(_onTextChanged);
     WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _textController.removeListener(_onTextChanged);
     _textController.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -60,13 +58,6 @@ class _MessageInputAreaState extends ConsumerState<MessageInputArea>
     }
   }
 
-  void _onTextChanged() {
-    final text = _textController.text;
-    setState(() {
-      _isMultiline = text.contains('\n') || text.length > 50;
-    });
-  }
-
   Future<void> _sendMessage() async {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
@@ -76,9 +67,6 @@ class _MessageInputAreaState extends ConsumerState<MessageInputArea>
     HapticFeedback.lightImpact();
 
     _textController.clear();
-    setState(() {
-      _isMultiline = false;
-    });
 
     try {
       await ref
@@ -259,79 +247,13 @@ class _MessageInputAreaState extends ConsumerState<MessageInputArea>
             tooltip: 'Attach file',
           ),
           Expanded(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 40, maxHeight: 120),
-              child: TextField(
-                controller: _textController,
-                focusNode: _focusNode,
-                enabled: !isSending,
-                maxLines: null,
-                textInputAction: _isMultiline
-                    ? TextInputAction.newline
-                    : TextInputAction.send,
-                onSubmitted: (_) {
-                  if (!_isMultiline) {
-                    _sendMessage();
-                  }
-                },
-                decoration: InputDecoration(
-                  hintText: isSending ? 'Sending...' : 'Type a message...',
-                  hintStyle: TextStyle(
-                    color: colorScheme.onSurface.withValues(
-                      alpha: isSending ? 0.3 : 0.5,
-                    ),
-                  ),
-                  filled: true,
-                  fillColor: colorScheme.surfaceContainerHigh,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide(
-                      color: colorScheme.outline,
-                      width: 1,
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide(
-                      color: colorScheme.primary,
-                      width: 2,
-                    ),
-                  ),
-                  suffixIcon: IconButton(
-                    onPressed: isSending ? null : _showEmojiPicker,
-                    padding: const EdgeInsets.all(8),
-                    constraints: const BoxConstraints(
-                      minWidth: 36,
-                      minHeight: 36,
-                    ),
-                    iconSize: 22,
-                    icon: Icon(
-                      Icons.emoji_emotions_outlined,
-                      color: colorScheme.onSurface.withValues(
-                        alpha: isSending ? 0.3 : 0.6,
-                      ),
-                    ),
-                    tooltip: 'Emoji & Stickers',
-                  ),
-                  suffixIconConstraints: const BoxConstraints(
-                    minWidth: 44,
-                    minHeight: 40,
-                  ),
-                ),
-                style: TextStyle(
-                  fontSize: 16,
-                  height: 1.3,
-                  color: colorScheme.onSurface,
-                ),
-              ),
+            child: MessageTextInput(
+              controller: _textController,
+              focusNode: _focusNode,
+              hintText: isSending ? 'Sending...' : 'Type a message...',
+              enabled: !isSending,
+              onSubmit: _sendMessage,
+              onEmojiTap: _showEmojiPicker,
             ),
           ),
           _buildSendButton(isSending),
@@ -420,7 +342,6 @@ class _MessageInputAreaState extends ConsumerState<MessageInputArea>
 
     if (caption.isNotEmpty) {
       _textController.clear();
-      setState(() => _isMultiline = false);
     }
   }
 
@@ -476,7 +397,6 @@ class _MessageInputAreaState extends ConsumerState<MessageInputArea>
     // Clear text field if caption was used from it
     if (hasCaption && caption == null) {
       _textController.clear();
-      setState(() => _isMultiline = false);
     }
   }
 

@@ -12,6 +12,8 @@ class MessageState {
   final bool isInitialized;
   // Reply tracking
   final Message? replyingToMessage;
+  // Edit tracking — set while user is editing a message inline
+  final Message? editingMessage;
   // Mark-as-read tracking per chat (chatId -> last marked messageId)
   final Map<int, int> lastMarkedMessageIds;
   // Tracks chats where all history has been loaded
@@ -27,6 +29,7 @@ class MessageState {
     this.errorMessage,
     this.isInitialized = false,
     this.replyingToMessage,
+    this.editingMessage,
     this.lastMarkedMessageIds = const {},
     this.noMoreMessagesChats = const {},
   });
@@ -36,7 +39,7 @@ class MessageState {
       const MessageState(isLoading: false, isInitialized: false);
 
   // Copy with method for immutable updates
-  // Use clearReplyingTo flag to explicitly clear replyingToMessage
+  // Use clearReplyingTo / clearEditing flags to explicitly null those fields
   MessageState copyWith({
     Map<int, List<Message>>? messagesByChat,
     Set<int>? initializedChatIds,
@@ -49,6 +52,8 @@ class MessageState {
     bool? isInitialized,
     Message? replyingToMessage,
     bool clearReplyingTo = false,
+    Message? editingMessage,
+    bool clearEditing = false,
     Map<int, int>? lastMarkedMessageIds,
     Set<int>? noMoreMessagesChats,
   }) {
@@ -66,6 +71,9 @@ class MessageState {
       replyingToMessage: clearReplyingTo
           ? null
           : (replyingToMessage ?? this.replyingToMessage),
+      editingMessage: clearEditing
+          ? null
+          : (editingMessage ?? this.editingMessage),
       lastMarkedMessageIds: lastMarkedMessageIds ?? this.lastMarkedMessageIds,
       noMoreMessagesChats: noMoreMessagesChats ?? this.noMoreMessagesChats,
     );
@@ -114,8 +122,11 @@ class MessageState {
       copyWith(errorMessage: error, isLoading: false);
   MessageState selectChat(int chatId) => copyWith(selectedChatId: chatId);
   MessageState setReplyingTo(Message message) =>
-      copyWith(replyingToMessage: message);
+      copyWith(replyingToMessage: message, clearEditing: true);
   MessageState clearReplyingTo() => copyWith(clearReplyingTo: true);
+  MessageState setEditing(Message message) =>
+      copyWith(editingMessage: message, clearReplyingTo: true);
+  MessageState clearEditing() => copyWith(clearEditing: true);
 
   // Computed properties
   bool get hasError => errorMessage != null;
@@ -225,6 +236,7 @@ class MessageState {
         other.errorMessage != errorMessage ||
         other.isInitialized != isInitialized ||
         other.replyingToMessage?.id != replyingToMessage?.id ||
+        other.editingMessage?.id != editingMessage?.id ||
         other.lastMarkedMessageIds.length != lastMarkedMessageIds.length ||
         other.noMoreMessagesChats.length != noMoreMessagesChats.length) {
       return false;
@@ -276,6 +288,7 @@ class MessageState {
       selectedMessages,
       initializedChatIds.length,
       replyingToMessage?.id,
+      editingMessage?.id,
       lastMarkedMessageIds.length,
       noMoreMessagesChats.length,
     );
